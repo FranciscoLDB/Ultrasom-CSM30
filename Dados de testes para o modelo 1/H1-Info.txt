@@ -1,0 +1,5 @@
+Matriz H 
+Modelo 50816 x 3600, 
+60 x 60 pixels, 
+S = 794, 
+N = 64
