@@ -1,0 +1,8 @@
+{
+    "cmake.sourceDirectory": "/workspaces/Ultrasom-CSM30/cgnr-project",
+    "files.associations": {
+        "cmath": "cpp",
+        "complex": "cpp",
+        "ostream": "cpp"
+    }
+}
