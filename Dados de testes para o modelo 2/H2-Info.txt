@@ -1,5 +1,0 @@
-Matriz H 
-Modelo: 27904 x 900, 
-30 x 30 pixels, 
-S = 436, 
-N = 64

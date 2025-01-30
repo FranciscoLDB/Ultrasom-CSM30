@@ -2,11 +2,14 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
-// #include <opencv2/opencv.hpp>
+#include <cstdint>
+#include <fstream>
+#include <algorithm>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "utils/stb_image_write.h"
 #include "utils/readData.cpp"
 
 using namespace std;
-//using namespace cv;
 
 // Função para calcular a norma L2 de um vetor
 double l2Norm(const vector<double>& vec) {
@@ -39,7 +42,6 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
                 w[j] += H[j][k] * p[k];
             }
         }
-        cout << "Iteração " << i << " concluída." << endl;
 
         double numerator = l2Norm(z) * l2Norm(z);
         double denominator = l2Norm(w) * l2Norm(w);
@@ -61,9 +63,14 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
             }
         }
 
+        double normR = l2Norm(r);
+        if (i % 10 == 0){
+            cout << "Iteração " << i << endl;
+            cout << "Norma L2 de r: " << normR << endl;
+        }
+
         // Verificar condição de parada
-        cout << "Norma L2 de r: " << l2Norm(r) << endl;
-        if (l2Norm(r) < epsilon) {
+        if (normR < epsilon) {
             cout << "Convergência alcançada na iteração " << i << endl;
             break;
         }
@@ -85,31 +92,39 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
 }
 
 // Função para salvar a imagem reconstruída
-// void saveImage(const vector<double>& f, int width, int height, const string& filename) {
-//     Mat image(height, width, CV_64F);
-//     for (int i = 0; i < height; ++i) {
-//         for (int j = 0; j < width; ++j) {
-//             image.at<double>(i, j) = f[i * width + j];
-//         }
-//     }
-//     normalize(image, image, 0, 255, NORM_MINMAX);
-//     image.convertTo(image, CV_8U);
-//     imwrite(filename, image);
-// }
+void saveImage(const vector<double>& f, const string& filename, int model = 1) {
+    int width = 60;
+    if (model == 2){
+        width = 30;
+    }
+    int size = width * width;
 
-// Main
-int main() {
-    // Ler os dados do arquivo
-    vector<vector<double>> H;
-    readData(H, "../../data/H-1.csv");
-    cout << "Matriz H: " << H.size() << " x " << H[0].size() << endl;
+    // Verificar se o tamanho do vetor é compativel com a imagem
+    if (f.size() != size) {
+        std::cerr << "O vetor deve conter exatamente " << size <<  " elementos." << std::endl;
+        std::cerr << "O arquivo contém " << f.size() << " elementos." << std::endl;
+        return;
+    }
 
-    vector<double> g1, g2;
-    readData(g1, "../../data/G-1.csv");
-    cout << "Vetor g1: " << g1.size() << endl;
-    readData(g2, "../../data/G-2.csv");
-    cout << "Vetor g2: " << g2.size() << endl;
+    // Normalizar os dados para o intervalo [0, 255]
+    double min_val = *std::min_element(f.begin(), f.end());
+    double max_val = *std::max_element(f.begin(), f.end());
+    std::vector<uint8_t> normalized_data(size);
 
+    for (size_t i = 0; i < f.size(); ++i) {
+        normalized_data[i] = static_cast<uint8_t>(255 * (f[i] - min_val) / (max_val - min_val));
+    }
+
+    // Salvar a imagem usando stb_image_write
+    if (stbi_write_png(filename.c_str(), width, width, 1, normalized_data.data(), width) == 0) {
+        std::cerr << "Falha ao salvar a imagem." << std::endl;
+        return;
+    }
+    std::cout << "A imagem foi salva como " << filename << std::endl;
+}
+
+// Run cgnr and save the reconstructed image
+void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g1) {
     vector<double> f(H[0].size(), 0.0); // Inicializa a imagem reconstruída
 
     // Executar o algoritmo CGNR
@@ -117,14 +132,46 @@ int main() {
     cgnr(H, g1, f);
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
-
     cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
 
     // Imprimir informações da reconstrução
     cout << "Tamanho da imagem reconstruída: " << f.size() << " pixels" << endl;
 
     // Salvar a imagem reconstruída
-    //saveImage(f, 60, 60, "reconstructed_image.png");
+    // Obter a data e hora atual
+    auto now = chrono::system_clock::now();
+    time_t now_time = chrono::system_clock::to_time_t(now);
+    tm local_tm = *localtime(&now_time);
+
+    // Formatar a data e hora
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", &local_tm);
+    string datetime(buffer);
+
+    // Nome do arquivo com data e hora
+    string filename = "reconstructed_image_" + datetime + ".png";
+
+    // Salvar a imagem reconstruída
+    saveImage(f, filename, 1);
+}
+
+// Main
+int main() {
+    cout << "Iniciando algoritmo!"<< endl;
+    // Ler os dados do arquivo
+    vector<vector<double>> H;
+    readData(H, "../../data/model1/H-1.csv");
+    cout << "Matriz H: " << H.size() << " x " << H[0].size() << endl;
+
+    vector<double> g1, g2;
+    readData(g1, "../../data/model1/G-1.csv");
+    cout << "Vetor g1: " << g1.size() << endl;
+    readData(g2, "../../data/model1/G-2.csv");
+    cout << "Vetor g2: " << g2.size() << endl;
+
+    // Executar o algoritmo CGNR
+    execute_cgnr(H, g1);
+    // execute_cgnr(H, g2);
 
     return 0;
 }
