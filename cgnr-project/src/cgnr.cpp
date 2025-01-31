@@ -115,8 +115,23 @@ void saveImage(const vector<double>& f, const string& filename, int model = 1) {
         normalized_data[i] = static_cast<uint8_t>(255 * (f[i] - min_val) / (max_val - min_val));
     }
 
+    // Rotacionar a imagem 90 graus a esquerda
+    std::vector<uint8_t> rotated_data(size);
+    for (int i = 0; i < width; ++i) {
+        for (int j = 0; j < width; ++j) {
+            rotated_data[j * width + i] = normalized_data[(width - i - 1) * width + j];
+        }
+    }
+
+    // Inverter a imagem horizontalmente
+    for (int i = 0; i < width; ++i) {
+        for (int j = 0; j < width / 2; ++j) {
+            std::swap(rotated_data[i * width + j], rotated_data[i * width + width - j - 1]);
+        }
+    }
+
     // Salvar a imagem usando stb_image_write
-    if (stbi_write_png(filename.c_str(), width, width, 1, normalized_data.data(), width) == 0) {
+    if (stbi_write_png(filename.c_str(), width, width, 1, rotated_data.data(), width) == 0) {
         std::cerr << "Falha ao salvar a imagem." << std::endl;
         return;
     }
@@ -124,12 +139,12 @@ void saveImage(const vector<double>& f, const string& filename, int model = 1) {
 }
 
 // Run cgnr and save the reconstructed image
-void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g1) {
+void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, int model = 1) {
     vector<double> f(H[0].size(), 0.0); // Inicializa a imagem reconstruída
 
     // Executar o algoritmo CGNR
     auto start = chrono::high_resolution_clock::now();
-    cgnr(H, g1, f);
+    cgnr(H, g, f);
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
     cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
@@ -149,10 +164,10 @@ void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g1) {
     string datetime(buffer);
 
     // Nome do arquivo com data e hora
-    string filename = "reconstructed_image_" + datetime + ".png";
+    string filename = "imgs/reconstructed_image_" + datetime + ".png";
 
     // Salvar a imagem reconstruída
-    saveImage(f, filename, 1);
+    saveImage(f, filename, model);
 }
 
 // Main
@@ -160,18 +175,18 @@ int main() {
     cout << "Iniciando algoritmo!"<< endl;
     // Ler os dados do arquivo
     vector<vector<double>> H;
-    readData(H, "../../data/model1/H-1.csv");
+    readData(H, "../../data/model2/H-2.csv");
     cout << "Matriz H: " << H.size() << " x " << H[0].size() << endl;
 
     vector<double> g1, g2;
-    readData(g1, "../../data/model1/G-1.csv");
+    readData(g1, "../../data/model2/g-30x30-1.csv");
     cout << "Vetor g1: " << g1.size() << endl;
-    readData(g2, "../../data/model1/G-2.csv");
+    readData(g2, "../../data/model2/g-30x30-2.csv");
     cout << "Vetor g2: " << g2.size() << endl;
 
     // Executar o algoritmo CGNR
-    execute_cgnr(H, g1);
-    // execute_cgnr(H, g2);
+    execute_cgnr(H, g1, 2);
+    execute_cgnr(H, g2, 2);
 
     return 0;
 }
