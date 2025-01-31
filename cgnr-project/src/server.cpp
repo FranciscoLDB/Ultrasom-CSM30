@@ -9,7 +9,6 @@
 
 #define PORT 8080
 
-
 void processSignal(const std::string& signal, std::string& response) {
     // Processa o sinal e gera uma resposta
     response = "Processed: " + signal;
@@ -59,6 +58,8 @@ bool startServer(int& server_fd, struct sockaddr_in& address, int& opt) {
     return true;
 }
 
+
+// g++ server.cpp -o server -pthread
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;

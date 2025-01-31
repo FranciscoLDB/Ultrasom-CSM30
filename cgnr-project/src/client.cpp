@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 #include <sys/socket.h>
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
@@ -28,11 +29,35 @@ bool conectaServidor(int& sock, struct sockaddr_in& serv_addr) {
     return true;
 }
 
-void enviarSinal(int sock, const std::string& signal) {
+void enviarSinal(int sock, const std::string& signal, char* buffer) {
     send(sock, signal.c_str(), signal.size(), 0);
     std::cout << "Signal sent\n";
+    read(sock, buffer, 1024);
 }
 
+int menu() {
+    std::cout << "1. Enviar sinal\n";
+    std::cout << "2. Escolher modelo\n"; 
+    std::cout << "3. Sair\n";
+    std::cout << "Escolha uma opção: ";
+    int opcao;
+    std::cin >> opcao;
+    return opcao;
+}
+
+// Estrutura da mensagem
+// sinal: vetor de n elementos double
+// modelo: 1 ou 2
+// se modelo 1, n = 60
+// se modelo 2, n = 30
+// usuario: definido aleatoriamente
+struct Mensagem {
+    std::vector<double> sinal;
+    int modelo;
+    std::string usuario;
+};
+
+// g++ client.cpp -o client
 int main() { 
     int sock = 0; 
     struct sockaddr_in serv_addr; 
@@ -43,14 +68,22 @@ int main() {
         return 1;
     }
     std::cout << "Conectado ao servidor\n";
+    int opcao;
+    opcao = menu();
+    while (opcao != 3) {
+        if (opcao == 1) {
+            std::cout << "Digite o sinal: ";
+            std::cin >> signal;
+            enviarSinal(sock, signal, buffer);
+        } else if (opcao == 2) {
+            std::cout << "Escolha o modelo: ";
+            std::cin >> signal;
+            enviarSinal(sock, signal, buffer);
+        }
+        opcao = menu();
+    }
 
-    // Envia dados ao servidor
-    send(sock, signal.c_str(), signal.size(), 0);
-    std::cout << "Signal sent\n";
-
-    // servidor
-    read(sock, buffer, 1024);
-    std::cout << "Response from server: " << buffer << std::endl;
+    enviarSinal(sock, signal, buffer);
 
     close(sock);
     return 0;

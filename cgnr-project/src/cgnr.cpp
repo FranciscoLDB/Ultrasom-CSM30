@@ -23,8 +23,8 @@ double l2Norm(const vector<double>& vec) {
 // Função principal do algoritmo CGNR
 void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double>& f) {
     vector<double> r = g; // r_0 = g
-    vector<double> z(H[0].size(), 0.0); // z_0 = 0
-    vector<double> p(H[0].size(), 0.0); // p_0 = 0
+    vector<double> z(H[0].size(), 0.0); // z_0 = H^T * r_0
+    vector<double> p(H[0].size(), 0.0); // p_0 = z_0
     double epsilon = 1e-4; // Limite de erro
     int maxIterations = 1000; // Limite de iterações
 
@@ -48,7 +48,7 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
         double alpha = (denominator != 0.0) ? numerator / denominator : 0.0; // alpha_i
 
         if (denominator == 0.0) {
-            cerr << "Erro: divisão por zero ao calcular alpha" << endl;
+            //cerr << "Erro: divisão por zero ao calcular alpha" << endl;
         }
 
         for (size_t j = 0; j < f.size(); ++j) {
@@ -59,7 +59,7 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
             if (!isnan(alpha) && !isnan(w[j])) {
                 r[j] -= alpha * w[j]; // r_{i+1} = r_i - alpha_i * w_i
             } else {
-                cerr << "Erro: valor inválido detectado em alpha ou w[" << j << "]" << endl;
+                //cerr << "Erro: valor inválido detectado em alpha ou w[" << j << "]" << endl;
             }
         }
 
@@ -170,23 +170,49 @@ void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, int 
     saveImage(f, filename, model);
 }
 
+// Função para aplicar o ganho de sinal a um vetor de sinal
+void applyGain(vector<double>& signal) {
+    int N = 64;
+    int S = signal.size() / N;
+    for(int c = 1; c <= N; ++c) {
+        for (int l = 1; l <= S; ++l) {
+            double gain = 100 + (1.0 / 20.0) * l * sqrt(l);
+            signal[(c - 1) * S + l - 1] *= gain;
+        }
+    }
+}
+
 // Main
 int main() {
     cout << "Iniciando algoritmo!"<< endl;
+    int model = 1;
+    string h_file = "../../data/model1/H-1.csv";
+    string g1_file = "../../data/model1/G-1.csv";
+    string g2_file = "../../data/model1/G-2.csv";
+
+    if(model == 2){
+        h_file = "../../data/model2/H-2.csv";
+        g1_file = "../../data/model2/g-30x30-1.csv";
+        g2_file = "../../data/model2/g-30x30-2.csv";
+    }
     // Ler os dados do arquivo
     vector<vector<double>> H;
-    readData(H, "../../data/model2/H-2.csv");
+    readData(H, h_file);
     cout << "Matriz H: " << H.size() << " x " << H[0].size() << endl;
 
     vector<double> g1, g2;
-    readData(g1, "../../data/model2/g-30x30-1.csv");
+    readData(g1, g1_file);
     cout << "Vetor g1: " << g1.size() << endl;
-    readData(g2, "../../data/model2/g-30x30-2.csv");
+    readData(g2, g2_file);
     cout << "Vetor g2: " << g2.size() << endl;
 
+    // Aplicar o ganho de sinal
+    // applyGain(g1);
+    // applyGain(g2);
+
     // Executar o algoritmo CGNR
-    execute_cgnr(H, g1, 2);
-    execute_cgnr(H, g2, 2);
+    execute_cgnr(H, g1, model);
+    execute_cgnr(H, g2, model);
 
     return 0;
 }
