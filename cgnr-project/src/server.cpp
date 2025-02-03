@@ -13,6 +13,23 @@
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
+/* Estrutura da imagem
+- Identificação do usuário;
+- Identificação do algoritmo utilizado
+- Data e hora do início da reconstrução;
+- Data e hora do término da reconstrução;
+- Tamanho em pixels;
+- O número de iterações executadas.
+*/
+struct imagem {
+    std::string usuario;
+    int algoritmo;
+    std::string dataInicio;
+    std::string dataFim;
+    int tamanho;
+    int numIteracoes;
+};
+
 /* Função para obter o relatório
 Gerar um relatório com todas as imagens reconstruídas com as seguintes informações: 
 imagem gerada, usuário, número de iterações e tempo de reconstrução; */
