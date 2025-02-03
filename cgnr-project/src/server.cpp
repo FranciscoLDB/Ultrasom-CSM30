@@ -6,34 +6,81 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h> 
+#include <map>
+#include <sstream>
+#include <vector>
 
 #define PORT 8080
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 1024
 
-void processSignal(const std::string& signal, std::string& response) {
-    // mensagens que o cliente manda:
-    // std::string sinal = "MSG:RELATORIO";
-    // std::string sinal = "MSG:DESEMPENHO";
-    // std::string sinal = "MSG:STATUS";
-    // std::string sinal = "MSG:SINAL";
-    // std::string sinal = "MSG:ERRO";
-    // std::string sinal = "MSG:SAIR";
+/* Função para obter o relatório
+Gerar um relatório com todas as imagens reconstruídas com as seguintes informações: 
+imagem gerada, usuário, número de iterações e tempo de reconstrução; */
+void getRelatorio(int new_socket) {
+    std::string response = "RELATORIO";
+    send(new_socket, response.c_str(), response.size(), 0);
+    std::cout << "Response sent: " << response << std::endl;
+}
 
-    // pega o sinal (depois de MSG:) e faz o que tem que fazer
-    std::string sinal = signal.substr(4);
-    response = "";
-    if (sinal == "RELATORIO") {
-        response = "RELATORIO";
-    } else if (sinal == "DESEMPENHO") {
-        response = "DESEMPENHO";
-    } else if (sinal == "STATUS") {
-        response = "STATUS";
-    } else if (sinal == "SINAL") {
-        response = "SINAL";
-    } else if (sinal == "ERRO") {
-        response = "ERRO";
+/* Função para obter o desempenho
+Gerar um relatório de desempenho do servidor, com as informações de 
+consumo de memória e de ocupação de CPU num determinado intervalo de tempo; */
+void getDesempenho(int new_socket) {
+    std::string response = "DESEMPENHO";
+    send(new_socket, response.c_str(), response.size(), 0);
+    std::cout << "Response sent: " << response << std::endl;
+}
+
+void getStatus(int new_socket) {
+    std::string response = "STATUS";
+    send(new_socket, response.c_str(), response.size(), 0);
+    std::cout << "Response sent: " << response << std::endl;
+}
+
+void getSinal(int new_socket) {
+    std::string response = "OK";
+    send(new_socket, response.c_str(), response.size(), 0);
+    std::cout << "Response sent: " << response << std::endl;
+
+    char buffer[BUFFER_SIZE] = {0};
+    read(new_socket, buffer, BUFFER_SIZE);
+    std::string header(buffer);
+    std::cout << "Header received: " << header << std::endl;
+
+    // Parse header
+    std::istringstream headerStream(header);
+    std::string token;
+    std::getline(headerStream, token, ':'); // MSG
+    std::getline(headerStream, token, ':'); // usuario
+    std::string usuario = token;
+    std::getline(headerStream, token, ':'); // modelo
+    int modelo = std::stoi(token);
+    std::getline(headerStream, token, ':'); // numPackets
+    int numPackets = std::stoi(token);
+    std::cout << "Usuario: " << usuario << " Modelo: " << modelo << " NumPackets: " << numPackets << std::endl;
+    std::cin.ignore();
+
+    std::vector<double> sinal;
+    for (int i = 0; i < numPackets; ++i) {
+        memset(buffer, 0, BUFFER_SIZE);
+        read(new_socket, buffer, BUFFER_SIZE);
+        std::istringstream packetStream(buffer);
+        while (std::getline(packetStream, token, ',')) {
+            sinal.push_back(std::stod(token));
+        }
+        std::cout << "Pacote " << i << " recebido\n";
+        std::cout << "Sinal size: " << sinal.size() << std::endl;
+        std::cout << std::endl << "Precione enter para continuar\n";
+        std::cin.ignore();
     }
 
+    read(new_socket, buffer, BUFFER_SIZE);
+    if (std::string(buffer) != "END") {
+        std::cerr << "Erro ao receber pacote END\n";
+    }
+
+    std::cout << "Sinal recebido de " << usuario << " com modelo " << modelo << std::endl;
+    response = "OK";
 }
 
 // Função para lidar com um cliente
@@ -50,19 +97,28 @@ void handleClient(int new_socket) {
             std::cerr << "Erro ao ler dados do cliente\n";
             break;
         }
+
         std::string signal(buffer, bytesRead);
-
-        // Verifica se a mensagem é "SAIR"
-        if (signal.substr(4) == "SAIR") {
-            std::cout << "Client requested to close the connection\n";
+        std::string sinal = signal.substr(4);
+        response = "";
+        if (sinal == "RELATORIO") {
+            getRelatorio(new_socket);
+        } else if (sinal == "DESEMPENHO") {
+            getDesempenho(new_socket);
+        } else if (sinal == "STATUS") {
+            getStatus(new_socket);
+        } else if (sinal == "SINAL") {
+            getSinal(new_socket);
+        } else if (sinal == "SAIR"){
+            std::cout << "Cliente desconectado: " << new_socket << std::endl;
+            response = "Desconectado";
+            send(new_socket, response.c_str(), response.size(), 0);
+            std::cout << "Response sent: " << response << std::endl;
             break;
+        } else {
+            response = "ERRO";
+            std::cerr << "Sinal inválido:" << sinal << std::endl;
         }
-
-        processSignal(signal, response);
-
-        // Envia resposta ao cliente
-        send(new_socket, response.c_str(), response.size(), 0);
-        std::cout << "Response sent: " << response << std::endl;
 
     }
 
@@ -103,6 +159,9 @@ int main() {
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
+
+    // limpa terminal
+    std::cout << "\033[2J\033[1;1H";
 
     if (!startServer(server_fd, address, opt)) {
         std::cout << "Erro ao iniciar o servidor\n";
