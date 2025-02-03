@@ -8,24 +8,63 @@
 #include <arpa/inet.h> 
 
 #define PORT 8080
+#define BUFFER_SIZE 4096
 
 void processSignal(const std::string& signal, std::string& response) {
-    // Processa o sinal e gera uma resposta
-    response = "Processed: " + signal;
+    // mensagens que o cliente manda:
+    // std::string sinal = "MSG:RELATORIO";
+    // std::string sinal = "MSG:DESEMPENHO";
+    // std::string sinal = "MSG:STATUS";
+    // std::string sinal = "MSG:SINAL";
+    // std::string sinal = "MSG:ERRO";
+    // std::string sinal = "MSG:SAIR";
+
+    // pega o sinal (depois de MSG:) e faz o que tem que fazer
+    std::string sinal = signal.substr(4);
+    response = "";
+    if (sinal == "RELATORIO") {
+        response = "RELATORIO";
+    } else if (sinal == "DESEMPENHO") {
+        response = "DESEMPENHO";
+    } else if (sinal == "STATUS") {
+        response = "STATUS";
+    } else if (sinal == "SINAL") {
+        response = "SINAL";
+    } else if (sinal == "ERRO") {
+        response = "ERRO";
+    }
+
 }
 
+// Função para lidar com um cliente
+// new_socket: socket do cliente
+// Recebe um sinal do cliente, processa e envia uma resposta
 void handleClient(int new_socket) {
-    char buffer[1024] = {0};
+    char buffer[BUFFER_SIZE] = {0};
     std::string response;
 
-    // Recebe dados do cliente
-    read(new_socket, buffer, 1024);
-    std::string signal(buffer);
-    processSignal(signal, response);
+    while (true) {
+        // Recebe dados do cliente
+        int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
+        if (bytesRead < 0) {
+            std::cerr << "Erro ao ler dados do cliente\n";
+            break;
+        }
+        std::string signal(buffer, bytesRead);
 
-    // Envia resposta ao cliente
-    send(new_socket, response.c_str(), response.size(), 0);
-    std::cout << "Response sent\n";
+        // Verifica se a mensagem é "SAIR"
+        if (signal.substr(4) == "SAIR") {
+            std::cout << "Client requested to close the connection\n";
+            break;
+        }
+
+        processSignal(signal, response);
+
+        // Envia resposta ao cliente
+        send(new_socket, response.c_str(), response.size(), 0);
+        std::cout << "Response sent: " << response << std::endl;
+
+    }
 
     close(new_socket);
 }
@@ -57,7 +96,6 @@ bool startServer(int& server_fd, struct sockaddr_in& address, int& opt) {
 
     return true;
 }
-
 
 // g++ server.cpp -o server -pthread
 int main() {
