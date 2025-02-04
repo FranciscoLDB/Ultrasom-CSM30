@@ -9,6 +9,8 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <fstream>
+#include <string>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -30,6 +32,56 @@ struct imagem {
     int numIteracoes;
 };
 
+/* Verifica recursos da maquina
+- Consumo de memória;
+- Ocupação de CPU;
+*/
+struct desempenho {
+    double memoria;
+    double cpu;
+};
+
+void getUsage() {
+    // TODO
+    
+}
+
+// Função para obter o uso de memória em KB
+long getMemoryUsage() {
+    std::ifstream file("/proc/self/status");
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.substr(0, 6) == "VmRSS:") {
+            std::istringstream iss(line);
+            std::string key;
+            long value;
+            std::string unit;
+            iss >> key >> value >> unit;
+            return value; // Retorna o valor em KB
+        }
+    }
+    return 0;
+}
+
+// Função para obter o uso de CPU em porcentagem
+double getCpuUsage() {
+    std::ifstream file("/proc/stat");
+    std::string line;
+    std::getline(file, line);
+    std::istringstream iss(line);
+    std::string cpu;
+    long user, nice, system, idle;
+    iss >> cpu >> user >> nice >> system >> idle;
+    static long prevTotal = 0;
+    static long prevIdle = 0;
+    long total = user + nice + system + idle;
+    long totalDiff = total - prevTotal;
+    long idleDiff = idle - prevIdle;
+    prevTotal = total;
+    prevIdle = idle;
+    return (totalDiff - idleDiff) * 100.0 / totalDiff;
+}
+
 /* Função para obter o relatório
 Gerar um relatório com todas as imagens reconstruídas com as seguintes informações: 
 imagem gerada, usuário, número de iterações e tempo de reconstrução; */
@@ -43,7 +95,10 @@ void getRelatorio(int new_socket) {
 Gerar um relatório de desempenho do servidor, com as informações de 
 consumo de memória e de ocupação de CPU num determinado intervalo de tempo; */
 void getDesempenho(int new_socket) {
-    std::string response = "DESEMPENHO";
+    long memoryUsage = getMemoryUsage();
+    double cpuUsage = getCpuUsage();
+    std::string response = "Memória usada: " + std::to_string(memoryUsage) + " KB\n";
+    response += "Uso de CPU: " + std::to_string(cpuUsage) + " %\n";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
 }
