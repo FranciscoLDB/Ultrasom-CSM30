@@ -54,7 +54,7 @@ std::string enviarSinal(int sock, const std::string& signal, char* buffer) {
     std::cout << "Signal sent\n";
     memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
     read(sock, buffer, BUFFER_SIZE);
-    std::cout << "Response received:" << buffer << std::endl;
+    std::cout << "\nResponse received:" << buffer << std::endl;
     return std::string(buffer);
 }
 
@@ -83,61 +83,14 @@ int menu(int modelo) {
 }
 
 // Estrutura da mensagem
-// sinal: vetor de n elementos double
 // modelo: 1 ou 2
 // se modelo 1, n = 60
 // se modelo 2, n = 30
 // usuario: definido aleatoriamente
 struct Mensagem {
-    std::vector<double> sinal;
     int modelo;
     std::string usuario;
 } mensagem;
-
-// Cria sinal de ultrassom com operações adicionais
-void criaSinalUltrassom(std::vector<double>& sinal, int modelo) {
-    int n1 = 50816, n2 = 27904;
-    sinal.clear();
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(1.2e-20, 7.5e+20);
-    std::uniform_int_distribution<> opDis(0, 3); // Distribuição para escolher a operação
-    std::uniform_real_distribution<> divDis(1.0, 10000.0); // Distribuição para o divisor
-
-    auto applyOperation = [&](double num) {
-        int op = opDis(gen);
-        std::string str = "";
-        double mantissa = 0.0;
-        switch (op) {
-            case 0:
-                str = std::to_string(num);
-                std::reverse(str.begin(), str.end());
-                return std::stod(str);
-            case 1:
-                return -num;
-            case 2:
-                return num / divDis(gen);
-            case 3:
-                int exp;
-                mantissa = std::frexp(num, &exp);
-                return std::ldexp(mantissa, -exp);
-            default:
-                return num;
-        }
-    };
-
-    if (modelo == 1) {
-        for (int i = 0; i < n1; i++) {
-            double num = dis(gen);
-            sinal.push_back(applyOperation(num));
-        }
-    } else {
-        for (int i = 0; i < n2; i++) {
-            double num = dis(gen);
-            sinal.push_back(applyOperation(num));
-        }
-    }
-}
 
 // Gera mensagem
 // Preenche a estrutura mensagem com valores aleatórios
@@ -145,61 +98,15 @@ void criaSinalUltrassom(std::vector<double>& sinal, int modelo) {
 // mensagem: mensagem a ser gerada
 void geraMensagem(Mensagem& mensagem) {
     mensagem.modelo = mensagem.modelo != 0 ? mensagem.modelo : rand() % 2 + 1;
-    criaSinalUltrassom(mensagem.sinal, mensagem.modelo);
     static const std::vector<std::string> usuarios = {
-        "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy"
+        "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy",
+        "Kevin", "Laura", "Michael", "Nancy", "Oliver", "Pamela", "Quentin", "Rachel", "Steve", "Tina"
     };
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, usuarios.size() - 1);
     std::uniform_int_distribution<> numDis(1000, 9999); // Distribuição para o número aleatório
     mensagem.usuario = usuarios[dis(gen)] + std::to_string(numDis(gen));
-}
-
-void enviaArquivo(int sock, const std::string& filePath, char* buffer) {
-    std::ifstream file("client_files/" + filePath, std::ios::binary);
-    if (!file.is_open()) {
-        std::cout << "Erro ao abrir o arquivo\n";
-        std::cout << "Aperte enter para continuar!\n";
-        std::cin.ignore();
-        std::cin.ignore();
-        return;
-    }
-
-    file.seekg(0, std::ios::end);
-    size_t fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::string header = "FILE:" + filePath + ":" + std::to_string(fileSize);
-    send(sock, header.c_str(), header.size(), 0);
-    std::cout << "Enviando arquivo: " << header << std::endl;
-
-    char fileBuffer[BUFFER_SIZE];
-    while (file.read(fileBuffer, BUFFER_SIZE)) {
-        send(sock, fileBuffer, BUFFER_SIZE, 0);
-    }
-    send(sock, fileBuffer, file.gcount(), 0);
-    file.close();
-
-    std::cout << "Arquivo enviado\n";
-
-    memset(buffer, 0, BUFFER_SIZE);
-    read(sock, buffer, BUFFER_SIZE);
-    std::cout << "Response received:" << buffer << std::endl;
-}
-
-void salvaSinalEmCSV(const Mensagem& mensagem, const std::string& filePath) {
-    std::ofstream file("client_files/" + filePath, std::ofstream::trunc);
-    if (!file.is_open()) {
-        std::cout << "Erro ao criar o arquivo\n";
-        return;
-    }
-
-    for (const auto& valor : mensagem.sinal) {
-        file << valor << "\n";
-    }
-
-    file.close();
 }
 
 double geraSinal(int modelo){
@@ -258,7 +165,6 @@ bool isValidNumber(const std::string& str) {
     return iss >> d && iss.eof();
 }
 
-// Envia sinais
 // Enviar uma sequência de sinais em intervalos de tempo aleatórios
 void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     int n1 = 50816, n2 = 27904, n = 0;
@@ -312,16 +218,6 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     std::cin.ignore();
 }
 
-void enviaMensagem(int sock, const Mensagem& mensagem, char* buffer) {
-    std::string filePath = mensagem.usuario + ".csv";
-    salvaSinalEmCSV(mensagem, filePath);
-    enviaArquivo(sock, filePath, buffer);
-    // Exclui o arquivo após enviar
-    if (remove(("client_files/" + filePath).c_str()) != 0) {
-        std::cout << "Erro ao excluir o arquivo\n";
-    }
-}
-
 // g++ client.cpp -o client
 int main() { 
     int sock = 0; 
@@ -347,7 +243,6 @@ int main() {
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta == "OK") {
                     enviaSinais(sock, mensagem, buffer);
-                    mensagem.sinal.clear();
                     mensagem.modelo = 0;
                     mensagem.usuario = "";
                 } else {
@@ -371,16 +266,25 @@ int main() {
             case 3: {
                 std::string sinal = "MSG:RELATORIO";
                 resposta = enviarSinal(sock, sinal, buffer);
+                std::cout << "Pressione enter para continuar\n";
+                std::cin.ignore();
+                std::cin.ignore();
                 break;
             }
             case 4: {
                 std::string sinal = "MSG:DESEMPENHO";
                 resposta = enviarSinal(sock, sinal, buffer);
+                std::cout << "Pressione enter para continuar\n";
+                std::cin.ignore();
+                std::cin.ignore();
                 break;
             }
             case 5: {
                 std::string sinal = "MSG:STATUS";
                 resposta = enviarSinal(sock, sinal, buffer);
+                std::cout << "Pressione enter para continuar\n";
+                std::cin.ignore();
+                std::cin.ignore();
                 break;
             }
             default:

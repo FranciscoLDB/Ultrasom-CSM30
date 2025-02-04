@@ -11,6 +11,8 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include "utils/readData.cpp"
+#include "cgnr.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -109,20 +111,6 @@ void excluiArquivo(const std::string& filePath) {
     if (remove(("server_files/" + filePath).c_str()) != 0) {
         std::cout << "Erro ao excluir o arquivo\n";
     }
-}
-
-// Print barra de progresso
-void printBarraProgresso(int progress) {
-    int barWidth = 50;
-    std::cout << "[";
-    int pos = barWidth * progress / 100;
-    for (int j = 0; j < barWidth; ++j) {
-        if (j < pos) std::cout << "=";
-        else if (j == pos) std::cout << ">";
-        else std::cout << " ";
-    }
-    std::cout << "] " << progress << " %\r";
-    std::cout.flush();
 }
 
 bool isValidNumber(const std::string& str) {
@@ -324,9 +312,16 @@ int main() {
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
+    std::vector<std::vector<double>> H1;
+    std::vector<std::vector<double>> H2;
 
-    // limpa terminal
-    std::cout << "\033[2J\033[1;1H";
+    std::cout << "\033[2J\033[1;1H"; // limpa terminal
+
+    std::cout << "Iniciando servidor...\n";
+    readData(H1, "../data/model1/H-1.csv");
+    std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
+    readData(H2, "../data/model2/H-2.csv");
+    std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
 
     if (!startServer(server_fd, address, opt)) {
         std::cout << "Erro ao iniciar o servidor\n";
