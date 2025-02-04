@@ -6,6 +6,11 @@
 #include <unistd.h>
 #include <cstring>
 #include <map>
+#include <fstream>
+#include <random>
+#include <functional>
+#include <algorithm>
+#include <cmath>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -86,19 +91,47 @@ struct Mensagem {
     std::string usuario;
 } mensagem;
 
-// Cria sinal de ultrassom
-// sinal: vetor de n elementos double
-// modelo: 1 ou 2
-// se modelo 1, n = 50816, range de 0 a 793
-// se modelo 2, n = 27904, range de 0 a 435
+// Cria sinal de ultrassom com operações adicionais
 void criaSinalUltrassom(std::vector<double>& sinal, int modelo) {
+    int n1 = 50816, n2 = 27904;
+    sinal.clear();
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(1.2e-20, 7.5e+20);
+    std::uniform_int_distribution<> opDis(0, 3); // Distribuição para escolher a operação
+    std::uniform_real_distribution<> divDis(1.0, 10000.0); // Distribuição para o divisor
+
+    auto applyOperation = [&](double num) {
+        int op = opDis(gen);
+        std::string str = "";
+        double mantissa = 0.0;
+        switch (op) {
+            case 0:
+                str = std::to_string(num);
+                std::reverse(str.begin(), str.end());
+                return std::stod(str);
+            case 1:
+                return -num;
+            case 2:
+                return num / divDis(gen);
+            case 3:
+                int exp;
+                mantissa = std::frexp(num, &exp);
+                return std::ldexp(mantissa, -exp);
+            default:
+                return num;
+        }
+    };
+
     if (modelo == 1) {
-        for (int i = 0; i < 50816; i++) {
-            sinal.push_back(rand() % 794);
+        for (int i = 0; i < n1; i++) {
+            double num = dis(gen);
+            sinal.push_back(applyOperation(num));
         }
     } else {
-        for (int i = 0; i < 27904; i++) {
-            sinal.push_back(rand() % 436);
+        for (int i = 0; i < n2; i++) {
+            double num = dis(gen);
+            sinal.push_back(applyOperation(num));
         }
     }
 }
@@ -111,48 +144,70 @@ void criaSinalUltrassom(std::vector<double>& sinal, int modelo) {
 void geraMensagem(Mensagem& mensagem, const std::string& signal) {
     mensagem.modelo = mensagem.modelo != 0 ? mensagem.modelo : rand() % 2 + 1;
     criaSinalUltrassom(mensagem.sinal, mensagem.modelo);
-    mensagem.usuario = "user" + std::to_string(rand() % 1000);
+    static const std::vector<std::string> usuarios = {
+        "Alice", "Bob", "Charlie", "David", "Eve", "Frank", "Grace", "Heidi", "Ivan", "Judy"
+    };
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, usuarios.size() - 1);
+    std::uniform_int_distribution<> numDis(1000, 9999); // Distribuição para o número aleatório
+    mensagem.usuario = usuarios[dis(gen)] + std::to_string(numDis(gen));
 }
 
-void enviaPacote(int sock, const std::string& pacote) {
-    send(sock, pacote.c_str(), pacote.size(), 0);
-}
-
-void enviaMensagem(int sock, const Mensagem& mensagem, char* buffer) {
-    size_t totalSize = mensagem.sinal.size();
-    size_t numPackets = (totalSize * sizeof(double) + BUFFER_SIZE - 1) / BUFFER_SIZE;
-    std::string header = "MSG:" + mensagem.usuario + ":" + std::to_string(mensagem.modelo) + ":" + std::to_string(numPackets);
-    enviaPacote(sock, header);
-    std::cout << "Enviando mensagem: " << header << std::endl;
-    std::cout << "Enviando " << numPackets << " pacotes\n";
-
-    std::cout << "Precione enter para começar a enviar os pacotes\n";
-    std::cin.ignore();
-    std::cin.ignore();
-
-    for (size_t i = 0; i < numPackets; ++i) {
-        size_t start = i * BUFFER_SIZE / sizeof(double);
-        size_t end = std::min(start + BUFFER_SIZE / sizeof(double), totalSize);
-        std::string pacote;
-
-        // print a cada 20% do total concluido
-        if (i % (numPackets / 5) == 0) {
-            std::cout << "Enviando pacote " << i << " de " << numPackets << std::endl;
-        }
-
-        for (size_t j = start; j < end; ++j) {
-            pacote += std::to_string(mensagem.sinal[j]) + ",";
-        }
-        pacote.pop_back(); // Remove a última vírgula
-        enviaPacote(sock, pacote);
+void enviaArquivo(int sock, const std::string& filePath, char* buffer) {
+    std::ifstream file("client_files/" + filePath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cout << "Erro ao abrir o arquivo\n";
+        std::cout << "Aperte enter para continuar!\n";
+        std::cin.ignore();
+        std::cin.ignore();
+        return;
     }
 
-    enviaPacote(sock, "END");
-    std::cout << "Mensagem enviada\n";
+    file.seekg(0, std::ios::end);
+    size_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::string header = "FILE:" + filePath + ":" + std::to_string(fileSize);
+    send(sock, header.c_str(), header.size(), 0);
+    std::cout << "Enviando arquivo: " << header << std::endl;
+
+    char fileBuffer[BUFFER_SIZE];
+    while (file.read(fileBuffer, BUFFER_SIZE)) {
+        send(sock, fileBuffer, BUFFER_SIZE, 0);
+    }
+    send(sock, fileBuffer, file.gcount(), 0);
+    file.close();
+
+    std::cout << "Arquivo enviado\n";
 
     memset(buffer, 0, BUFFER_SIZE);
     read(sock, buffer, BUFFER_SIZE);
     std::cout << "Response received:" << buffer << std::endl;
+}
+
+void salvaSinalEmCSV(const Mensagem& mensagem, const std::string& filePath) {
+    std::ofstream file("client_files/" + filePath, std::ofstream::trunc);
+    if (!file.is_open()) {
+        std::cout << "Erro ao criar o arquivo\n";
+        return;
+    }
+
+    for (const auto& valor : mensagem.sinal) {
+        file << valor << "\n";
+    }
+
+    file.close();
+}
+
+void enviaMensagem(int sock, const Mensagem& mensagem, char* buffer) {
+    std::string filePath = mensagem.usuario + ".csv";
+    salvaSinalEmCSV(mensagem, filePath);
+    enviaArquivo(sock, filePath, buffer);
+    // Exclui o arquivo após enviar
+    if (remove(("client_files/" + filePath).c_str()) != 0) {
+        std::cout << "Erro ao excluir o arquivo\n";
+    }
 }
 
 // g++ client.cpp -o client
@@ -180,6 +235,9 @@ int main() {
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta == "OK") {
                     enviaMensagem(sock, mensagem, buffer);
+                    mensagem.sinal.clear();
+                    mensagem.modelo = 0;
+                    mensagem.usuario = "";
                 } else {
                     std::cout << "Erro ao enviar sinal\n";
                 }

@@ -41,12 +41,8 @@ struct desempenho {
     double cpu;
 };
 
-void getUsage() {
-    // TODO
-    
-}
-
-// Função para obter o uso de memória em KB
+// Função para obter o uso de memória em mb
+// Retorna o uso de memória em mb
 long getMemoryUsage() {
     std::ifstream file("/proc/self/status");
     std::string line;
@@ -57,7 +53,7 @@ long getMemoryUsage() {
             long value;
             std::string unit;
             iss >> key >> value >> unit;
-            return value; // Retorna o valor em KB
+            return value/1000; // Retorna o valor em mb
         }
     }
     return 0;
@@ -97,7 +93,7 @@ consumo de memória e de ocupação de CPU num determinado intervalo de tempo; *
 void getDesempenho(int new_socket) {
     long memoryUsage = getMemoryUsage();
     double cpuUsage = getCpuUsage();
-    std::string response = "Memória usada: " + std::to_string(memoryUsage) + " KB\n";
+    std::string response = "Memória usada: " + std::to_string(memoryUsage) + " KB / " + " 8 GB\n";
     response += "Uso de CPU: " + std::to_string(cpuUsage) + " %\n";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
@@ -109,7 +105,13 @@ void getStatus(int new_socket) {
     std::cout << "Response sent: " << response << std::endl;
 }
 
-void getSinal(int new_socket) {
+void excluiArquivo(const std::string& filePath) {
+    if (remove(("server_files/" + filePath).c_str()) != 0) {
+        std::cout << "Erro ao excluir o arquivo\n";
+    }
+}
+
+void getSinal(int new_socket, std::vector<double>& sinal) {
     std::string response = "OK";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
@@ -122,36 +124,55 @@ void getSinal(int new_socket) {
     // Parse header
     std::istringstream headerStream(header);
     std::string token;
-    std::getline(headerStream, token, ':'); // MSG
-    std::getline(headerStream, token, ':'); // usuario
-    std::string usuario = token;
-    std::getline(headerStream, token, ':'); // modelo
-    int modelo = std::stoi(token);
-    std::getline(headerStream, token, ':'); // numPackets
-    int numPackets = std::stoi(token);
-    std::cout << "Usuario: " << usuario << " Modelo: " << modelo << " NumPackets: " << numPackets << std::endl;
-    std::cin.ignore();
+    std::getline(headerStream, token, ':'); // FILE
+    std::getline(headerStream, token, ':'); // filePath
+    std::string filePath = token;
+    std::getline(headerStream, token, ':'); // fileSize
+    size_t fileSize = std::stoull(token);
+    std::cout << "FilePath: " << filePath << " FileSize: " << fileSize << std::endl;
 
-    std::vector<double> sinal;
-    for (int i = 0; i < numPackets; ++i) {
+    std::ofstream file("server_files/" + filePath, std::ios::binary);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao criar o arquivo\n";
+        return;
+    }
+
+    size_t totalBytesRead = 0;
+    while (totalBytesRead < fileSize) {
         memset(buffer, 0, BUFFER_SIZE);
-        read(new_socket, buffer, BUFFER_SIZE);
-        std::istringstream packetStream(buffer);
-        while (std::getline(packetStream, token, ',')) {
-            sinal.push_back(std::stod(token));
+        int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
+        if (bytesRead <= 0) {
+            std::cerr << "Erro ao ler dados do arquivo\n";
+            break;
         }
-        std::cout << "Pacote " << i << " recebido\n";
-        std::cout << "Sinal size: " << sinal.size() << std::endl;
-        std::cout << std::endl << "Precione enter para continuar\n";
-        std::cin.ignore();
+        file.write(buffer, bytesRead);
+        totalBytesRead += bytesRead;
+    }
+    file.close();
+
+    std::cout << "Arquivo recebido: " << filePath << std::endl;
+    send(new_socket, "OK", 2, 0);
+    std::cout << "Response sent: " << response << std::endl;
+
+    // Ler o arquivo .csv e colocar os dados em um vetor
+    sinal.clear();
+    std::ifstream csvFile("server_files/" + filePath);
+    if (!csvFile.is_open()) {
+        std::cerr << "Erro ao abrir o arquivo .csv\n";
+        return;
     }
 
-    read(new_socket, buffer, BUFFER_SIZE);
-    if (std::string(buffer) != "END") {
-        std::cerr << "Erro ao receber pacote END\n";
+    while (std::getline(csvFile, token)) {
+        try {
+            sinal.push_back(std::stod(token));
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Erro ao converter string para double: " << token << std::endl;
+        }
     }
+    csvFile.close();
+    excluiArquivo(filePath);
 
-    std::cout << "Sinal recebido de " << usuario << " com modelo " << modelo << std::endl;
+    std::cout << "Sinal recebido com " << sinal.size() << " elementos\n";
     response = "OK";
 }
 
@@ -161,6 +182,7 @@ void getSinal(int new_socket) {
 void handleClient(int new_socket) {
     char buffer[BUFFER_SIZE] = {0};
     std::string response;
+    std::vector<double> sinal_vet;
 
     while (true) {
         // Recebe dados do cliente
@@ -171,17 +193,17 @@ void handleClient(int new_socket) {
         }
 
         std::string signal(buffer, bytesRead);
-        std::string sinal = signal.substr(4);
+        std::string codigo = signal.substr(4);
         response = "";
-        if (sinal == "RELATORIO") {
+        if (codigo == "RELATORIO") {
             getRelatorio(new_socket);
-        } else if (sinal == "DESEMPENHO") {
+        } else if (codigo == "DESEMPENHO") {
             getDesempenho(new_socket);
-        } else if (sinal == "STATUS") {
+        } else if (codigo == "STATUS") {
             getStatus(new_socket);
-        } else if (sinal == "SINAL") {
-            getSinal(new_socket);
-        } else if (sinal == "SAIR"){
+        } else if (codigo == "SINAL") {
+            getSinal(new_socket, sinal_vet);
+        } else if (codigo == "SAIR"){
             std::cout << "Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
             send(new_socket, response.c_str(), response.size(), 0);
@@ -189,9 +211,8 @@ void handleClient(int new_socket) {
             break;
         } else {
             response = "ERRO";
-            std::cerr << "Sinal inválido:" << sinal << std::endl;
+            std::cerr << "Codigo inválido:" << codigo << std::endl;
         }
-
     }
 
     close(new_socket);
