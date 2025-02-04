@@ -11,6 +11,9 @@
 #include <functional>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <thread>
+#include <sstream>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -140,8 +143,7 @@ void criaSinalUltrassom(std::vector<double>& sinal, int modelo) {
 // Preenche a estrutura mensagem com valores aleatórios
 // modelo: se diferente de 0, usa o valor passado
 // mensagem: mensagem a ser gerada
-// signal: sinal a ser gerado
-void geraMensagem(Mensagem& mensagem, const std::string& signal) {
+void geraMensagem(Mensagem& mensagem) {
     mensagem.modelo = mensagem.modelo != 0 ? mensagem.modelo : rand() % 2 + 1;
     criaSinalUltrassom(mensagem.sinal, mensagem.modelo);
     static const std::vector<std::string> usuarios = {
@@ -200,6 +202,116 @@ void salvaSinalEmCSV(const Mensagem& mensagem, const std::string& filePath) {
     file.close();
 }
 
+double geraSinal(int modelo){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(1.2e-20, 7.5e+20);
+    std::uniform_int_distribution<> opDis(0, 3); // Distribuição para escolher a operação
+    std::uniform_real_distribution<> divDis(1.0, 1000.0); // Distribuição para o divisor
+
+    auto applyOperation = [&](double num) {
+        int op = opDis(gen);
+        std::string str = "";
+        double mantissa = 0.0;
+        switch (op) {
+            case 0:
+                str = std::to_string(num);
+                std::reverse(str.begin(), str.end());
+                return std::stod(str);
+            case 1:
+                return -num;
+            case 2:
+                return num / divDis(gen);
+            case 3:
+                int exp;
+                mantissa = std::frexp(num, &exp);
+                return std::ldexp(mantissa, -exp);
+            default:
+                return num;
+        }
+    };
+
+    if (modelo == 1) {
+        return applyOperation(dis(gen));
+    } else {
+        return applyOperation(dis(gen));
+    }
+}
+
+// Print barra de progresso
+void printBarraProgresso(int progress) {
+    int barWidth = 50;
+    std::cout << "[";
+    int pos = barWidth * progress / 100;
+    for (int j = 0; j < barWidth; ++j) {
+        if (j < pos) std::cout << "=";
+        else if (j == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << progress << " %\r";
+    std::cout.flush();
+}
+
+bool isValidNumber(const std::string& str) {
+    std::istringstream iss(str);
+    double d;
+    return iss >> d && iss.eof();
+}
+
+// Envia sinais
+// Enviar uma sequência de sinais em intervalos de tempo aleatórios
+void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
+    int n1 = 50816, n2 = 27904, n = 0;
+    n = mensagem.modelo == 1 ? n1 : n2;
+    std::string header = "SINAL:" + std::to_string(mensagem.modelo) + ":" + mensagem.usuario + ":" + std::to_string(n);
+    send(sock, header.c_str(), header.size(), 0);
+    std::cout << "Enviando arquivo: " << header << std::endl;
+    
+    for (int i = 0; i < n; i++) {
+        double signal = geraSinal(mensagem.modelo);
+        int interval = rand() % 10 + 0; // Intervalo aleatório entre 0ms e 100ms
+        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+        
+        std::ostringstream oss;
+        oss << signal;
+        std::string sinal = oss.str();
+
+        // verifica se sinal é um numero valido
+        // deve suportar numeros negativos e decimais
+        // deve suportar numeros com expoente ex: 8.90836e+17
+        if (!isValidNumber(sinal)) {
+            std::cerr << "Sinal inválido: " << sinal << std::endl;
+            std::cout << "Aperte enter para continuar!\n";
+            std::cin.ignore();
+            send(sock, "ERRO", 4, 0);
+            return;
+        }
+        // if (i >= n - 20){
+        //     std::cout << "Sinal " << i << ": " << sinal.c_str() << std::endl;
+        // }
+        send(sock, sinal.c_str(), BUFFER_SIZE, 0);
+
+        int progress = (i * 100 / n);
+        if (i % (n / 50) == 0) {
+            printBarraProgresso(progress);
+        }
+    }
+    std::cout << "[==================================================] 100 %\n";
+    std::cout << std::endl; // Nova linha após a barra de progresso
+    std::cout << "Sinais enviados\n";
+
+    send(sock, "END", BUFFER_SIZE, 0);
+    std::cout << "Sinal de termino enviado\n";
+
+    memset(buffer, 0, BUFFER_SIZE);
+    read(sock, buffer, BUFFER_SIZE);
+    std::cout << "Response received:" << buffer << std::endl;
+
+    std::cout << "Aperte enter para continuar!\n";
+    std::cin.ignore();
+    std::cin.ignore();
+}
+
 void enviaMensagem(int sock, const Mensagem& mensagem, char* buffer) {
     std::string filePath = mensagem.usuario + ".csv";
     salvaSinalEmCSV(mensagem, filePath);
@@ -215,7 +327,7 @@ int main() {
     int sock = 0; 
     struct sockaddr_in serv_addr; 
     char buffer[BUFFER_SIZE] = {0}; 
-    std::string signal = "SINAL, model, user";
+    
     if (!conectaServidor(sock, serv_addr)) {
         std::cout << "Erro ao conectar ao servidor\n";
         return 1;
@@ -230,11 +342,11 @@ int main() {
     while (opcao != 6) {
         switch (opcao) {
             case 1: {
-                geraMensagem(mensagem, signal);
+                geraMensagem(mensagem);
                 std::string sinal = "MSG:SINAL";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta == "OK") {
-                    enviaMensagem(sock, mensagem, buffer);
+                    enviaSinais(sock, mensagem, buffer);
                     mensagem.sinal.clear();
                     mensagem.modelo = 0;
                     mensagem.usuario = "";

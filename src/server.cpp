@@ -111,7 +111,41 @@ void excluiArquivo(const std::string& filePath) {
     }
 }
 
-void getSinal(int new_socket, std::vector<double>& sinal) {
+// Print barra de progresso
+void printBarraProgresso(int progress) {
+    int barWidth = 50;
+    std::cout << "[";
+    int pos = barWidth * progress / 100;
+    for (int j = 0; j < barWidth; ++j) {
+        if (j < pos) std::cout << "=";
+        else if (j == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << progress << " %\r";
+    std::cout.flush();
+}
+
+bool isValidNumber(const std::string& str) {
+    std::istringstream iss(str);
+    double d;
+    return iss >> d && iss.eof();
+}
+
+void salvarSinal(const std::vector<double>& sinal, const std::string& filePath) {
+    std::ofstream file("server_files/" + filePath, std::ofstream::trunc);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao criar o arquivo\n";
+        return;
+    }
+
+    for (const auto& valor : sinal) {
+        file << valor << "\n";
+    }
+    file.close();
+    std::cout << "Arquivo salvo\n";
+}
+
+void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address) {
     std::string response = "OK";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
@@ -119,71 +153,109 @@ void getSinal(int new_socket, std::vector<double>& sinal) {
     char buffer[BUFFER_SIZE] = {0};
     read(new_socket, buffer, BUFFER_SIZE);
     std::string header(buffer);
-    std::cout << "Header received: " << header << std::endl;
 
     // Parse header
-    std::istringstream headerStream(header);
     std::string token;
-    std::getline(headerStream, token, ':'); // FILE
-    std::getline(headerStream, token, ':'); // filePath
+    std::istringstream iss(header);
+    std::getline(iss, token, ':'); // SINAL
+    std::getline(iss, token, ':'); // modelo
+    int modelo = std::stoi(token);
+    std::getline(iss, token, ':'); // usuario
     std::string filePath = token;
-    std::getline(headerStream, token, ':'); // fileSize
-    size_t fileSize = std::stoull(token);
-    std::cout << "FilePath: " << filePath << " FileSize: " << fileSize << std::endl;
+    std::getline(iss, token, ':'); // n
+    int n = std::stoi(token);
 
-    std::ofstream file("server_files/" + filePath, std::ios::binary);
-    if (!file.is_open()) {
-        std::cerr << "Erro ao criar o arquivo\n";
-        return;
-    }
-
-    size_t totalBytesRead = 0;
-    while (totalBytesRead < fileSize) {
-        memset(buffer, 0, BUFFER_SIZE);
-        int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
-        if (bytesRead <= 0) {
-            std::cerr << "Erro ao ler dados do arquivo\n";
-            break;
-        }
-        file.write(buffer, bytesRead);
-        totalBytesRead += bytesRead;
-    }
-    file.close();
-
-    std::cout << "Arquivo recebido: " << filePath << std::endl;
-    send(new_socket, "OK", 2, 0);
-    std::cout << "Response sent: " << response << std::endl;
-
-    // Ler o arquivo .csv e colocar os dados em um vetor
+    // vetor para armazenar o indice dos sinais que deram erro
+    std::vector<int> erros;
+    erros.clear();
     sinal.clear();
-    std::ifstream csvFile("server_files/" + filePath);
-    if (!csvFile.is_open()) {
-        std::cerr << "Erro ao abrir o arquivo .csv\n";
-        return;
-    }
+    std::cout << "Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
+    for (int i = 0; i < n; i++) {
+        double num;
+        do {
+            memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
+            read(new_socket, buffer, BUFFER_SIZE);
+        } while (std::string(buffer).empty());
+        std::string str(buffer);
+        if (isValidNumber(str)) {
+            num = std::stod(str);
+            sinal.push_back(num);
+        } else {
+            //std::cerr << "Erro: valor inválido recebido: " << str << " | i: " << i << std::endl;
+            erros.push_back(i);
+            //sinal.push_back(0.0);
+        }
 
-    while (std::getline(csvFile, token)) {
-        try {
-            sinal.push_back(std::stod(token));
-        } catch (const std::invalid_argument& e) {
-            std::cerr << "Erro ao converter string para double: " << token << std::endl;
+        // Barra de progresso
+        int progress = (i * 100 / n);
+        if (i % (n / 100) == 0) {
+            if (progress % 25 == 0) {
+                std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | " << progress << "% concluído" << std::endl;
+            }
         }
     }
-    csvFile.close();
-    excluiArquivo(filePath);
+    std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
+    std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
 
-    std::cout << "Sinal recebido com " << sinal.size() << " elementos\n";
-    response = "OK";
+    read(new_socket, buffer, BUFFER_SIZE);
+    //std::cout << "Response received:" << buffer << std::endl;
+    if (std::string(buffer) != "END") {
+        std::cerr << "Erro ao receber sinal de termino!\n";
+        send(new_socket, "ERRO", 4, 0);
+        return;
+    }
+    send(new_socket, "OK", 2, 0);
+
+    //salvarSinal(sinal, filePath + ".csv");
 }
 
 // Função para lidar com um cliente
 // new_socket: socket do cliente
 // Recebe um sinal do cliente, processa e envia uma resposta
-void handleClient(int new_socket) {
+void handleClient(int new_socket, struct sockaddr_in& address) {
     char buffer[BUFFER_SIZE] = {0};
     std::string response;
     std::vector<double> sinal_vet;
+    while (true) {
+        // Recebe dados do cliente
+        int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
+        if (bytesRead <= 0) {
+            if (bytesRead == 0) {
+                std::cout << "Cliente desconectado: " << new_socket << std::endl;
+            } else {
+                std::cerr << "Erro ao ler dados do cliente\n";
+            }
+            break;
+        }
 
+        std::string signal(buffer, bytesRead);
+        if (signal.size() < 4) {
+            std::cerr << "Erro: sinal recebido é muito curto\n";
+            continue;
+        }
+        std::string codigo = signal.substr(4);
+        response = "";
+        if (codigo == "RELATORIO") {
+            getRelatorio(new_socket);
+        } else if (codigo == "DESEMPENHO") {
+            getDesempenho(new_socket);
+        } else if (codigo == "STATUS") {
+            getStatus(new_socket);
+        } else if (codigo == "SINAL") {
+            getSinal(new_socket, sinal_vet, address);
+        } else if (codigo == "SAIR"){
+            std::cout << "Cliente desconectado: " << new_socket << std::endl;
+            response = "Desconectado";
+            send(new_socket, response.c_str(), response.size(), 0);
+            std::cout << "Response sent: " << response << std::endl;
+            break;
+        } else {
+            response = "ERRO";
+            std::cerr << "Codigo inválido:" << codigo << std::endl;
+        }
+    }
+
+    close(new_socket);
     while (true) {
         // Recebe dados do cliente
         int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
@@ -202,7 +274,7 @@ void handleClient(int new_socket) {
         } else if (codigo == "STATUS") {
             getStatus(new_socket);
         } else if (codigo == "SINAL") {
-            getSinal(new_socket, sinal_vet);
+            getSinal(new_socket, sinal_vet, address);
         } else if (codigo == "SAIR"){
             std::cout << "Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
@@ -271,7 +343,7 @@ int main() {
         }
 
         std::cout << "New client connected: " << new_socket  << " | " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
-        std::thread client_thread(handleClient, new_socket);
+        std::thread client_thread(handleClient, new_socket, std::ref(address));
         client_thread.detach();
     }
 
