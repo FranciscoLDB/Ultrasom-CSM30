@@ -14,6 +14,7 @@
 #include <chrono>
 #include <thread>
 #include <sstream>
+#include "utils/relatorio.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -54,7 +55,7 @@ std::string enviarSinal(int sock, const std::string& signal, char* buffer) {
     std::cout << "Signal sent\n";
     memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
     read(sock, buffer, BUFFER_SIZE);
-    std::cout << "\nResponse received:" << buffer << std::endl;
+    //std::cout << "\nResponse received:" << buffer << std::endl;
     return std::string(buffer);
 }
 
@@ -79,6 +80,11 @@ int menu(int modelo) {
     std::cout << "Escolha uma opção: ";
     int opcao;
     std::cin >> opcao;
+    if (std::cin.fail()) {
+        std::cin.clear();
+        std::cin.ignore();
+        opcao = 0;
+    }    
     return opcao;
 }
 
@@ -218,6 +224,8 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
 
 // g++ client.cpp -o client
 int main() { 
+    std::cout << "\033[2J\033[1;1H";
+    
     int sock = 0; 
     struct sockaddr_in serv_addr; 
     char buffer[BUFFER_SIZE] = {0}; 
@@ -264,6 +272,11 @@ int main() {
             case 3: {
                 std::string sinal = "MSG:RELATORIO";
                 resposta = enviarSinal(sock, sinal, buffer);
+                if (resposta != "ERRO") {
+                    geraRelatorio(resposta);
+                } else {
+                    std::cout << "Erro ao obter relatório\n";
+                }
                 std::cout << "Pressione enter para continuar\n";
                 std::cin.ignore();
                 std::cin.ignore();

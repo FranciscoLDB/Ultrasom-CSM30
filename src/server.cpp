@@ -66,9 +66,17 @@ double getCpuUsage() {
 Gerar um relatório com todas as imagens reconstruídas com as seguintes informações: 
 imagem gerada, usuário, número de iterações e tempo de reconstrução; */
 void getRelatorio(int new_socket) {
-    std::string response = "RELATORIO";
+    std::cout << "socket: " << new_socket << " | Enviando relatório...\n";
+
+    std::ifstream file("server_files/images.csv");
+    std::string line;
+    std::string response = "";
+    while (std::getline(file, line)) {
+        response += line + "\n";
+    }
     send(new_socket, response.c_str(), response.size(), 0);
-    std::cout << "Response sent: " << response << std::endl;
+
+    std::cout << "Socket: " << new_socket << " | Relatório envidado!\n";
 }
 
 /* Função para obter o desempenho
@@ -113,6 +121,18 @@ void salvarSinal(const std::vector<double>& sinal, const std::string& filePath) 
     }
     file.close();
     std::cout << "Arquivo salvo\n";
+}
+
+void saveToFile(const imagem img) {
+    std::ofstream file("./server_files/images.csv", std::ofstream::app);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao criar o arquivo\n";
+        return;
+    }
+    // Formato: usuario,algoritmo,dataInicio,dataFim,tamanho,numIteracoes,path,tempo
+    file << img.usuario << "," << img.algoritmo << "," << img.dataInicio << "," << img.dataFim << ",";
+    file << img.tamanho << "," << img.numIteracoes << "," << img.path << "," << img.tempo <<"\n";
+    file.close();
 }
 
 void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address, std::vector<std::vector<double>>& H1, std::vector<std::vector<double>>& H2) {
@@ -186,11 +206,17 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
     }
     img.usuario = filePath;
     //std::cout << "Imagem reconstruída: " << img.path << std::endl;
-    std::cout << "Img gerada: " << img.path << " | Usuario: " << img.usuario << " | NumIteracoes: " << img.numIteracoes << std::endl;
-    std::cout << "DataInicio: " << img.dataInicio << " | DataFim: " << img.dataFim << std::endl;
-    std::cout << "Fim" << std::endl;
+    std::cout << "==================================================================" << std::endl;
+    std::cout << "=| Usuario:    " << img.usuario << std::endl;
+    std::cout << "=| Img gerada: " << img.path << std::endl;
+    std::cout << "=| Algoritmo:  " << img.algoritmo << std::endl;
+    std::cout << "=| DataInicio: " << img.dataInicio << std::endl;
+    std::cout << "=| DataFim:    " << img.dataFim << std::endl;
+    std::cout << "=| Tamanho:    " << sqrt(img.tamanho) << "x" << sqrt(img.tamanho) << std::endl;
+    std::cout << "=| NumIteracoes: " << img.numIteracoes << std::endl;
+    std::cout << "===================================================================" << std::endl;
 
-    //salvarSinal(sinal, filePath + ".csv");
+    saveToFile(img);
 }
 
 // Função para lidar com um cliente

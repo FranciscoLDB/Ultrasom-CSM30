@@ -16,6 +16,7 @@ struct imagem {
     int algoritmo;
     int tamanho;
     int numIteracoes;
+    double tempo;
     std::string usuario;
     std::string dataInicio;
     std::string dataFim;
@@ -156,7 +157,6 @@ void saveImage(const vector<double>& f, const string& filename, imagem& img, int
     }
 
     img.tamanho = size;
-    img.path = filename;
     std::cout << "A imagem foi salva como " << filename << std::endl;
 }
 
@@ -194,9 +194,7 @@ imagem execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, in
 
     chrono::duration<double> elapsed = end - start;
     cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
-
-    // Imprimir informações da reconstrução
-    cout << "Tamanho da imagem reconstruída: " << f.size() << " pixels" << endl;
+    img.tempo = elapsed.count();
 
     // Salvar a imagem reconstruída
     // Obter a data e hora atual
@@ -210,7 +208,8 @@ imagem execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, in
     string datetime(buffer);
 
     // Nome do arquivo com data e hora
-    string filename = "/workspaces/Ultrasom-CSM30/imgs/reconstructed_image_" + datetime + ".png";
+    string filename = "./server_files/imgs/" + datetime + ".png";
+    img.path = filename;
 
     // Salvar a imagem reconstruída
     saveImage(f, filename, img, model);
