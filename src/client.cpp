@@ -122,6 +122,24 @@ double geraSinal(int modelo){
     }
 }
 
+double geraSinalCsv(int modelo, int i, std::vector<double>& g) {
+    if (g.size () == 0) {
+        std::string filePath = (modelo == 1) ? "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv" : "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv";
+        std::ifstream file(filePath);
+        std::string line;
+        if (file.is_open()) {
+            while (std::getline(file, line)) {
+                std::istringstream iss(line);
+                double num;
+                if (iss >> num) {
+                    g.push_back(num);
+                }
+            }
+        }
+    }
+    return g[i];
+}
+
 // Print barra de progresso
 void printBarraProgresso(int progress) {
     int barWidth = 50;
@@ -150,8 +168,11 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     send(sock, header.c_str(), header.size(), 0);
     std::cout << "Enviando arquivo: " << header << std::endl;
     
+    std::vector<double> g;
+    g.clear();
     for (int i = 0; i < n; i++) {
-        double signal = geraSinal(mensagem.modelo);
+        // double signal = geraSinal(mensagem.modelo);
+        double signal = geraSinalCsv(mensagem.modelo, i, g);
         int interval = rand() % 3 + 0; // Intervalo aleatório entre 0ms e 100ms
         //std::this_thread::sleep_for(std::chrono::milliseconds(interval));
         

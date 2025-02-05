@@ -270,7 +270,7 @@ bool startServer(int& server_fd, struct sockaddr_in& address, int& opt) {
     return true;
 }
 
-// g++ server.cpp -o server -pthread
+// g++ server.cpp -o server -pthread -lblas
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;

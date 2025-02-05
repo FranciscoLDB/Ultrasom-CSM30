@@ -5,21 +5,13 @@
 #include <cstdint>
 #include <fstream>
 #include <algorithm>
+#include <cblas.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "utils/stb_image_write.h"
 #include "utils/readData.cpp"
 
 using namespace std;
 
-/* Estrutura da imagem
-- Identificação do usuário;
-- Identificação do algoritmo utilizado
-- Data e hora do início da reconstrução;
-- Data e hora do término da reconstrução;
-- Tamanho em pixels;
-- O número de iterações executadas.
-- Caminho do arquivo da imagem reconstruída.
-*/
 struct imagem {
     int algoritmo;
     int tamanho;
@@ -30,87 +22,92 @@ struct imagem {
     std::string path;
 };
 
-// Função para calcular a norma L2 de um vetor
-double l2Norm(const vector<double>& vec) {
+double norm2(const vector<double>& v) {
     double sum = 0.0;
-    for (double val : vec) {
+    for (double val : v) {
         sum += val * val;
     }
     return sqrt(sum);
 }
 
-// Função principal do algoritmo CGNR
+void matVecMult(const vector<vector<double>>& mat, const vector<double>& vec, vector<double>& result) {
+    int rows = mat.size();
+    int cols = mat[0].size();
+    result.assign(rows, 0.0);
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            result[i] += mat[i][j] * vec[j];
+        }
+    }
+}
+
+void transposeMatVecMult(const vector<vector<double>>& mat, const vector<double>& vec, vector<double>& result) {
+    int rows = mat.size();
+    int cols = mat[0].size();
+    result.assign(cols, 0.0);
+    for (int j = 0; j < cols; ++j) {
+        for (int i = 0; i < rows; ++i) {
+            result[j] += mat[i][j] * vec[i];
+        }
+    }
+}
+
 int cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double>& f) {
-    vector<double> r = g; // r_0 = g
-    vector<double> z(H[0].size(), 0.0); // z_0 = H^T * r_0
-    vector<double> p(H[0].size(), 0.0); // p_0 = z_0
-    double epsilon = 1e-4; // Limite de erro
-    int maxIterations = 1000; // Limite de iterações
+    int maxIterations = 1000;
+    double tolerance = 1e-4;
+    int iterations = 0;
+    cout << "Iniciando CGNR..." << endl;
+    cout << "Tamanho do vetor g: " << g.size() << endl;
 
-    // Inicialização
-    for (size_t i = 0; i < H[0].size(); ++i) {
-        z[i] = 0; // z_0 = H^T * r_0
-    }
-    cout << "Inicialização concluída." << endl;
+    auto start = chrono::high_resolution_clock::now();
+    int m = H.size();
+    int n = H[0].size();
 
-    // Iteração do algoritmo
-    for (int i = 0; i < maxIterations; ++i) { // Limite de iterações
-        vector<double> w(H.size(), 0.0); // w_i = H * p_i
-        for (size_t j = 0; j < H.size(); ++j) {
-            for (size_t k = 0; k < H[0].size(); ++k) {
-                w[j] += H[j][k] * p[k];
-            }
-        }
+    f.assign(n, 0.0);
+    vector<double> r(m, 0.0), z(n, 0.0), p(n, 0.0), w(m, 0.0);
+    vector<double> temp(m, 0.0);
 
-        double numerator = l2Norm(z) * l2Norm(z);
-        double denominator = l2Norm(w) * l2Norm(w);
-        double alpha = (denominator != 0.0) ? numerator / denominator : 0.0; // alpha_i
-
-        if (denominator == 0.0) {
-            //cerr << "Erro: divisão por zero ao calcular alpha" << endl;
-        }
-
-        for (size_t j = 0; j < f.size(); ++j) {
-            f[j] += alpha * p[j]; // f_{i+1} = f_i + alpha_i * p_i
-        }
-
-        for (size_t j = 0; j < r.size(); ++j) {
-            if (!isnan(alpha) && !isnan(w[j])) {
-                r[j] -= alpha * w[j]; // r_{i+1} = r_i - alpha_i * w_i
-            } else {
-                //cerr << "Erro: valor inválido detectado em alpha ou w[" << j << "]" << endl;
-            }
-        }
-
-        double normR = l2Norm(r);
-        if (i % 10 == 0){
-            cout << "Iteração " << i << endl;
-            cout << "Norma L2 de r: " << normR << endl;
-        }
-
-        // Verificar condição de parada
-        if (normR < epsilon) {
-            cout << "Convergência alcançada na iteração " << i << endl;
-            return i;
-        }
-
-        // Atualização de z e p
-        for (size_t j = 0; j < z.size(); ++j) {
-            z[j] = 0; // z_{i+1} = H^T * r_{i+1}
-            for (size_t k = 0; k < H.size(); ++k) {
-                z[j] += H[k][j] * r[k];
-            }
-        }
-
-        // Cálculo de beta e atualização de p
-        double beta = l2Norm(z) * l2Norm(z) / (l2Norm(z) * l2Norm(z)); // beta_i
-        for (size_t j = 0; j < p.size(); ++j) {
-            p[j] = z[j] + beta * p[j]; // p_{i+1} = z_{i+1} + beta_i * p_i
-        }
+    matVecMult(H, f, temp);
+    for (int i = 0; i < m; ++i) {
+        r[i] = g[i] - temp[i];
     }
 
-    cout << "Limite de iterações atingido." << endl;
-    return maxIterations;
+    transposeMatVecMult(H, r, z);
+    p = z;
+
+    while (iterations < maxIterations) {
+        matVecMult(H, p, w);
+        double alpha = norm2(z) * norm2(z) / norm2(w) / norm2(w);
+
+        for (int i = 0; i < n; ++i) {
+            f[i] += alpha * p[i];
+        }
+
+        for (int i = 0; i < m; ++i) {
+            r[i] -= alpha * w[i];
+        }
+
+        vector<double> z_next(n, 0.0);
+        transposeMatVecMult(H, r, z_next);
+
+        double Nr = norm2(r);
+        if (iterations % 10 == 0) {
+            cout << "Iteração " << iterations << ": norm2(r) = " << Nr << endl;
+        }
+        if (norm2(r) < tolerance) {
+            break;
+        }
+
+        double beta = norm2(z_next) * norm2(z_next) / norm2(z) / norm2(z);
+        for (int i = 0; i < n; ++i) {
+            p[i] = z_next[i] + beta * p[i];
+        }
+
+        z = z_next;
+        ++iterations;
+    }
+
+    return iterations;
 }
 
 // Função para salvar a imagem reconstruída
@@ -213,57 +210,10 @@ imagem execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, in
     string datetime(buffer);
 
     // Nome do arquivo com data e hora
-    string filename = "imgs/reconstructed_image_" + datetime + ".png";
+    string filename = "/workspaces/Ultrasom-CSM30/imgs/reconstructed_image_" + datetime + ".png";
 
     // Salvar a imagem reconstruída
     saveImage(f, filename, img, model);
 
     return img;
-}
-
-// Função para aplicar o ganho de sinal a um vetor de sinal
-void applyGain(vector<double>& signal) {
-    int N = 64;
-    int S = signal.size() / N;
-    for(int c = 1; c <= N; ++c) {
-        for (int l = 1; l <= S; ++l) {
-            double gain = 100 + (1.0 / 20.0) * l * sqrt(l);
-            signal[(c - 1) * S + l - 1] *= gain;
-        }
-    }
-}
-
-// Main
-int mainCgnr() {
-    cout << "Iniciando algoritmo!"<< endl;
-    int model = 1;
-    string h_file = "../../data/model1/H-1.csv";
-    string g1_file = "../../data/model1/G-1.csv";
-    string g2_file = "../../data/model1/G-2.csv";
-
-    if(model == 2){
-        h_file = "../../data/model2/H-2.csv";
-        g1_file = "../../data/model2/g-30x30-1.csv";
-        g2_file = "../../data/model2/g-30x30-2.csv";
-    }
-    // Ler os dados do arquivo
-    vector<vector<double>> H;
-    readData(H, h_file);
-    cout << "Matriz H: " << H.size() << " x " << H[0].size() << endl;
-
-    vector<double> g1, g2;
-    readData(g1, g1_file);
-    cout << "Vetor g1: " << g1.size() << endl;
-    readData(g2, g2_file);
-    cout << "Vetor g2: " << g2.size() << endl;
-
-    // Aplicar o ganho de sinal
-    // applyGain(g1);
-    // applyGain(g2);
-
-    // Executar o algoritmo CGNR
-    execute_cgnr(H, g1, model);
-    execute_cgnr(H, g2, model);
-
-    return 0;
 }
