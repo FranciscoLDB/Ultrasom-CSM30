@@ -112,36 +112,13 @@ void geraMensagem(Mensagem& mensagem) {
 double geraSinal(int modelo){
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(1.2e-20, 7.5e+20);
-    std::uniform_int_distribution<> opDis(0, 3); // Distribuição para escolher a operação
-    std::uniform_real_distribution<> divDis(1.0, 1000.0); // Distribuição para o divisor
-
-    auto applyOperation = [&](double num) {
-        int op = opDis(gen);
-        std::string str = "";
-        double mantissa = 0.0;
-        switch (op) {
-            case 0:
-                str = std::to_string(num);
-                std::reverse(str.begin(), str.end());
-                return std::stod(str);
-            case 1:
-                return -num;
-            case 2:
-                return num / divDis(gen);
-            case 3:
-                int exp;
-                mantissa = std::frexp(num, &exp);
-                return std::ldexp(mantissa, -exp);
-            default:
-                return num;
-        }
-    };
+    std::uniform_real_distribution<double> disModel1(-0.000009, 0.000001);
+    std::uniform_real_distribution<double> disModel2(-0.000009, 0.000001);
 
     if (modelo == 1) {
-        return applyOperation(dis(gen));
+        return disModel1(gen);
     } else {
-        return applyOperation(dis(gen));
+        return disModel2(gen);
     }
 }
 
@@ -175,8 +152,8 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     
     for (int i = 0; i < n; i++) {
         double signal = geraSinal(mensagem.modelo);
-        int interval = rand() % 10 + 0; // Intervalo aleatório entre 0ms e 100ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+        int interval = rand() % 3 + 0; // Intervalo aleatório entre 0ms e 100ms
+        //std::this_thread::sleep_for(std::chrono::milliseconds(interval));
         
         std::ostringstream oss;
         oss << signal;

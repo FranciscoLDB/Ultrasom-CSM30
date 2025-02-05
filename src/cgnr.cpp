@@ -11,6 +11,25 @@
 
 using namespace std;
 
+/* Estrutura da imagem
+- Identificação do usuário;
+- Identificação do algoritmo utilizado
+- Data e hora do início da reconstrução;
+- Data e hora do término da reconstrução;
+- Tamanho em pixels;
+- O número de iterações executadas.
+- Caminho do arquivo da imagem reconstruída.
+*/
+struct imagem {
+    int algoritmo;
+    int tamanho;
+    int numIteracoes;
+    std::string usuario;
+    std::string dataInicio;
+    std::string dataFim;
+    std::string path;
+};
+
 // Função para calcular a norma L2 de um vetor
 double l2Norm(const vector<double>& vec) {
     double sum = 0.0;
@@ -21,7 +40,7 @@ double l2Norm(const vector<double>& vec) {
 }
 
 // Função principal do algoritmo CGNR
-void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double>& f) {
+int cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double>& f) {
     vector<double> r = g; // r_0 = g
     vector<double> z(H[0].size(), 0.0); // z_0 = H^T * r_0
     vector<double> p(H[0].size(), 0.0); // p_0 = z_0
@@ -72,7 +91,7 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
         // Verificar condição de parada
         if (normR < epsilon) {
             cout << "Convergência alcançada na iteração " << i << endl;
-            break;
+            return i;
         }
 
         // Atualização de z e p
@@ -89,10 +108,13 @@ void cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<doubl
             p[j] = z[j] + beta * p[j]; // p_{i+1} = z_{i+1} + beta_i * p_i
         }
     }
+
+    cout << "Limite de iterações atingido." << endl;
+    return maxIterations;
 }
 
 // Função para salvar a imagem reconstruída
-void saveImage(const vector<double>& f, const string& filename, int model = 1) {
+void saveImage(const vector<double>& f, const string& filename, imagem& img, int model = 1) {
     int width = 60;
     if (model == 2){
         width = 30;
@@ -135,17 +157,44 @@ void saveImage(const vector<double>& f, const string& filename, int model = 1) {
         std::cerr << "Falha ao salvar a imagem." << std::endl;
         return;
     }
+
+    img.tamanho = size;
+    img.path = filename;
     std::cout << "A imagem foi salva como " << filename << std::endl;
 }
 
 // Run cgnr and save the reconstructed image
-void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, int model = 1) {
+imagem execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, int model = 1) {
     vector<double> f(H[0].size(), 0.0); // Inicializa a imagem reconstruída
+    imagem img;
+    img.algoritmo = model;
+    img.tamanho = f.size();
 
-    // Executar o algoritmo CGNR
     auto start = chrono::high_resolution_clock::now();
-    cgnr(H, g, f);
+
+    // Obter a data e hora atual
+    auto start_now = chrono::system_clock::now();
+    time_t start_time = chrono::system_clock::to_time_t(start_now);
+    tm start_local_tm = *localtime(&start_time);
+
+    // Formatar a data e hora
+    char start_buffer[80];
+    strftime(start_buffer, sizeof(start_buffer), "%Y-%m-%d %H:%M:%S", &start_local_tm);
+    img.dataInicio = string(start_buffer);
+
+    int iteracoes = cgnr(H, g, f);
+    img.numIteracoes = iteracoes;
+
     auto end = chrono::high_resolution_clock::now();
+    auto end_now = chrono::system_clock::now();
+    time_t end_time = chrono::system_clock::to_time_t(end_now);
+    tm end_local_tm = *localtime(&end_time);
+
+    // Formatar a data e hora
+    char end_buffer[80];
+    strftime(end_buffer, sizeof(end_buffer), "%Y-%m-%d %H:%M:%S", &end_local_tm);
+    img.dataFim = string(end_buffer);
+
     chrono::duration<double> elapsed = end - start;
     cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
 
@@ -167,7 +216,9 @@ void execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, int 
     string filename = "imgs/reconstructed_image_" + datetime + ".png";
 
     // Salvar a imagem reconstruída
-    saveImage(f, filename, model);
+    saveImage(f, filename, img, model);
+
+    return img;
 }
 
 // Função para aplicar o ganho de sinal a um vetor de sinal
@@ -183,7 +234,7 @@ void applyGain(vector<double>& signal) {
 }
 
 // Main
-int main() {
+int mainCgnr() {
     cout << "Iniciando algoritmo!"<< endl;
     int model = 1;
     string h_file = "../../data/model1/H-1.csv";

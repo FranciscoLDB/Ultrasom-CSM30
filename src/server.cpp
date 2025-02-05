@@ -11,28 +11,10 @@
 #include <vector>
 #include <fstream>
 #include <string>
-#include "utils/readData.cpp"
 #include "cgnr.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
-
-/* Estrutura da imagem
-- Identificação do usuário;
-- Identificação do algoritmo utilizado
-- Data e hora do início da reconstrução;
-- Data e hora do término da reconstrução;
-- Tamanho em pixels;
-- O número de iterações executadas.
-*/
-struct imagem {
-    std::string usuario;
-    int algoritmo;
-    std::string dataInicio;
-    std::string dataFim;
-    int tamanho;
-    int numIteracoes;
-};
 
 /* Verifica recursos da maquina
 - Consumo de memória;
@@ -133,7 +115,7 @@ void salvarSinal(const std::vector<double>& sinal, const std::string& filePath) 
     std::cout << "Arquivo salvo\n";
 }
 
-void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address) {
+void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address, std::vector<std::vector<double>>& H1, std::vector<std::vector<double>>& H2) {
     std::string response = "OK";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
@@ -194,13 +176,27 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
     }
     send(new_socket, "OK", 2, 0);
 
+    imagem img;
+    if (modelo == 1) {
+        img = execute_cgnr(H1, sinal, modelo);
+    } else if (modelo == 2) {
+        img = execute_cgnr(H2, sinal, modelo);
+    } else {
+        std::cerr << "Erro: modelo inválido\n";
+    }
+    img.usuario = filePath;
+    //std::cout << "Imagem reconstruída: " << img.path << std::endl;
+    std::cout << "Img gerada: " << img.path << " | Usuario: " << img.usuario << " | NumIteracoes: " << img.numIteracoes << std::endl;
+    std::cout << "DataInicio: " << img.dataInicio << " | DataFim: " << img.dataFim << std::endl;
+    std::cout << "Fim" << std::endl;
+
     //salvarSinal(sinal, filePath + ".csv");
 }
 
 // Função para lidar com um cliente
 // new_socket: socket do cliente
 // Recebe um sinal do cliente, processa e envia uma resposta
-void handleClient(int new_socket, struct sockaddr_in& address) {
+void handleClient(int new_socket, struct sockaddr_in& address, std::vector<std::vector<double>>& H1, std::vector<std::vector<double>>& H2) {
     char buffer[BUFFER_SIZE] = {0};
     std::string response;
     std::vector<double> sinal_vet;
@@ -230,39 +226,7 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
         } else if (codigo == "STATUS") {
             getStatus(new_socket);
         } else if (codigo == "SINAL") {
-            getSinal(new_socket, sinal_vet, address);
-        } else if (codigo == "SAIR"){
-            std::cout << "Cliente desconectado: " << new_socket << std::endl;
-            response = "Desconectado";
-            send(new_socket, response.c_str(), response.size(), 0);
-            std::cout << "Response sent: " << response << std::endl;
-            break;
-        } else {
-            response = "ERRO";
-            std::cerr << "Codigo inválido:" << codigo << std::endl;
-        }
-    }
-
-    close(new_socket);
-    while (true) {
-        // Recebe dados do cliente
-        int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
-        if (bytesRead < 0) {
-            std::cerr << "Erro ao ler dados do cliente\n";
-            break;
-        }
-
-        std::string signal(buffer, bytesRead);
-        std::string codigo = signal.substr(4);
-        response = "";
-        if (codigo == "RELATORIO") {
-            getRelatorio(new_socket);
-        } else if (codigo == "DESEMPENHO") {
-            getDesempenho(new_socket);
-        } else if (codigo == "STATUS") {
-            getStatus(new_socket);
-        } else if (codigo == "SINAL") {
-            getSinal(new_socket, sinal_vet, address);
+            getSinal(new_socket, sinal_vet, address, H1, H2);
         } else if (codigo == "SAIR"){
             std::cout << "Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
@@ -318,9 +282,9 @@ int main() {
     std::cout << "\033[2J\033[1;1H"; // limpa terminal
 
     std::cout << "Iniciando servidor...\n";
-    readData(H1, "../data/model1/H-1.csv");
+    readData(H1, "/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
     std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
-    readData(H2, "../data/model2/H-2.csv");
+    readData(H2, "/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
     std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
 
     if (!startServer(server_fd, address, opt)) {
@@ -338,7 +302,7 @@ int main() {
         }
 
         std::cout << "New client connected: " << new_socket  << " | " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
-        std::thread client_thread(handleClient, new_socket, std::ref(address));
+        std::thread client_thread(handleClient, new_socket, std::ref(address), std::ref(H1), std::ref(H2));
         client_thread.detach();
     }
 
