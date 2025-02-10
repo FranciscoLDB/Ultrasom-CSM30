@@ -179,7 +179,7 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     for (int i = 0; i < n; i++) {
         // double signal = geraSinal(mensagem.modelo);
         double signal = geraSinalCsv(mensagem.modelo, i, g);
-        int interval = rand() % 3 + 0; // Intervalo aleatório entre 0ms e 100ms
+        int interval = rand() % 2 + 0; // Intervalo aleatório entre 0ms e 100ms
         //std::this_thread::sleep_for(std::chrono::milliseconds(interval));
         
         std::ostringstream oss;
@@ -221,6 +221,8 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     std::cin.ignore();
     std::cin.ignore();
 }
+
+
 
 // g++ client.cpp -o client
 int main() { 
@@ -285,6 +287,28 @@ int main() {
             case 4: {
                 std::string sinal = "MSG:DESEMPENHO";
                 resposta = enviarSinal(sock, sinal, buffer);
+                if (resposta != "ERRO") {
+                    std::cout << "Copiando relatório de desempenho para desempenho.txt\n";
+                    std::ofstream desempenhoFile("desempenho.txt");
+                    if (desempenhoFile.is_open()) {
+                        while (true) {
+                            std::cout << "Recebendo dados...\n";
+                            memset(buffer, 0, BUFFER_SIZE);
+                            read(sock, buffer, BUFFER_SIZE);
+                            //std::cout << buffer;
+                            if (std::string(buffer).find("END") != std::string::npos) {
+                                break;
+                            }                            
+                            desempenhoFile << buffer;
+                        }
+                        desempenhoFile.close();
+                    } else {
+                        std::cout << "Erro ao abrir o arquivo de desempenho\n";
+                    }
+                    //geraDesempenho(resposta);
+                } else {
+                    std::cout << "Erro ao obter relatório de desempenho\n";
+                }
                 std::cout << "Pressione enter para continuar\n";
                 std::cin.ignore();
                 std::cin.ignore();

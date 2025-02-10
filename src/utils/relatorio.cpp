@@ -78,3 +78,20 @@ void geraRelatorio(const std::string& data) {
     relatorio.close();
     std::cout << "Relatório gerado com sucesso: relatorio_imagens.txt\n";
 }
+
+void geraDesempenho(const std::string& data) {
+    std::cout << "Gerando relatório de desempenho...\n";
+    
+    std::ofstream relatorio("relatorio_desempenho.txt");
+    if (!relatorio.is_open()) {
+        std::cerr << "Erro ao criar o arquivo de relatório de desempenho\n";
+        return;
+    }
+
+    relatorio << "Relatório de Desempenho do Servidor\n";
+    relatorio << "===========================================================\n";
+    relatorio << data;
+
+    relatorio.close();
+    std::cout << "Relatório de desempenho gerado com sucesso: relatorio_desempenho.txt\n";
+}

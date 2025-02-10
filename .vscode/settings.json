@@ -66,5 +66,6 @@
         "hash_map": "cpp",
         "future": "cpp",
         "valarray": "cpp"
-    }
+    },
+    "cmake.ignoreCMakeListsMissing": true
 }

@@ -12,6 +12,7 @@
 #include <fstream>
 #include <string>
 #include "cgnr.cpp"
+#include "utils/desempenho.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -83,24 +84,31 @@ void getRelatorio(int new_socket) {
 Gerar um relatório de desempenho do servidor, com as informações de 
 consumo de memória e de ocupação de CPU num determinado intervalo de tempo; */
 void getDesempenho(int new_socket) {
-    long memoryUsage = getMemoryUsage();
-    double cpuUsage = getCpuUsage();
-    std::string response = "Memória usada: " + std::to_string(memoryUsage) + " KB / " + " 8 GB\n";
-    response += "Uso de CPU: " + std::to_string(cpuUsage) + " %\n";
-    send(new_socket, response.c_str(), response.size(), 0);
-    std::cout << "Response sent: " << response << std::endl;
+    std::cout << "socket: " << new_socket << " | Enviando desempenho...\n";
+
+    std::ifstream file("server_files/server_performance_report.csv");
+    std::string line;
+    std::string response = "";
+    send(new_socket, "DESEMPENHO", 10, 0);
+    while (std::getline(file, line)) {
+        response += line + "\n";
+        if (response.size() >= BUFFER_SIZE) {
+            send(new_socket, response.c_str(), BUFFER_SIZE, 0);
+            response = response.substr(BUFFER_SIZE);
+        }
+    }
+    if (!response.empty()) {
+        send(new_socket, response.c_str(), response.size(), 0);
+    }
+    send(new_socket, "END", 3, 0);
+
+    std::cout << "Socket: " << new_socket << " | Desempenho enviado!\n";
 }
 
 void getStatus(int new_socket) {
     std::string response = "STATUS";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
-}
-
-void excluiArquivo(const std::string& filePath) {
-    if (remove(("server_files/" + filePath).c_str()) != 0) {
-        std::cout << "Erro ao excluir o arquivo\n";
-    }
 }
 
 bool isValidNumber(const std::string& str) {
@@ -306,12 +314,16 @@ int main() {
     std::vector<std::vector<double>> H2;
 
     std::cout << "\033[2J\033[1;1H"; // limpa terminal
-
     std::cout << "Iniciando servidor...\n";
-    readData(H1, "/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
-    std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
-    readData(H2, "/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
-    std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
+
+    // Inicia a thread para monitorar o desempenho do servidor
+    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 600);
+    performance_thread.detach();
+
+    //readData(H1, "/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
+    //std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
+    //readData(H2, "/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
+    //std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
 
     if (!startServer(server_fd, address, opt)) {
         std::cout << "Erro ao iniciar o servidor\n";
