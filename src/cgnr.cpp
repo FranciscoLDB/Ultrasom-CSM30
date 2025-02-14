@@ -54,7 +54,7 @@ void transposeMatVecMult(const vector<vector<double>>& mat, const vector<double>
 }
 
 int cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double>& f) {
-    int maxIterations = 1000;
+    int maxIterations = 20;
     double tolerance = 1e-4;
     int iterations = 0;
     cout << "Iniciando CGNR..." << endl;

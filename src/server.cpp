@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cstring>
 #include <thread>
 #include <sys/types.h>
@@ -7,12 +6,9 @@
 #include <unistd.h>
 #include <arpa/inet.h> 
 #include <map>
-#include <sstream>
-#include <vector>
-#include <fstream>
-#include <string>
 #include "cgnr.cpp"
 #include "utils/desempenho.cpp"
+#include "utils/modelos.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -143,7 +139,10 @@ void saveToFile(const imagem img) {
     file.close();
 }
 
-void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address, std::vector<std::vector<double>>& H1, std::vector<std::vector<double>>& H2) {
+extern ModelMatrix ModelH1;
+extern ModelMatrix ModelH2;
+
+void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address) {
     std::string response = "OK";
     send(new_socket, response.c_str(), response.size(), 0);
     std::cout << "Response sent: " << response << std::endl;
@@ -206,9 +205,9 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
 
     imagem img;
     if (modelo == 1) {
-        img = execute_cgnr(H1, sinal, modelo);
+        img = execute_cgnr(ModelH1.getMatrix(), sinal, modelo);
     } else if (modelo == 2) {
-        img = execute_cgnr(H2, sinal, modelo);
+        img = execute_cgnr(ModelH2.getMatrix(), sinal, modelo);
     } else {
         std::cerr << "Erro: modelo inválido\n";
     }
@@ -230,7 +229,7 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
 // Função para lidar com um cliente
 // new_socket: socket do cliente
 // Recebe um sinal do cliente, processa e envia uma resposta
-void handleClient(int new_socket, struct sockaddr_in& address, std::vector<std::vector<double>>& H1, std::vector<std::vector<double>>& H2) {
+void handleClient(int new_socket, struct sockaddr_in& address) {
     char buffer[BUFFER_SIZE] = {0};
     std::string response;
     std::vector<double> sinal_vet;
@@ -260,7 +259,7 @@ void handleClient(int new_socket, struct sockaddr_in& address, std::vector<std::
         } else if (codigo == "STATUS") {
             getStatus(new_socket);
         } else if (codigo == "SINAL") {
-            getSinal(new_socket, sinal_vet, address, H1, H2);
+            getSinal(new_socket, sinal_vet, address);
         } else if (codigo == "SAIR"){
             std::cout << "Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
@@ -305,13 +304,13 @@ bool startServer(int& server_fd, struct sockaddr_in& address, int& opt) {
 }
 
 // g++ server.cpp -o server -pthread -lblas
+ModelMatrix ModelH1("/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
+ModelMatrix ModelH2("/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    std::vector<std::vector<double>> H1;
-    std::vector<std::vector<double>> H2;
 
     std::cout << "\033[2J\033[1;1H"; // limpa terminal
     std::cout << "Iniciando servidor...\n";
@@ -320,7 +319,9 @@ int main() {
     std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 600);
     performance_thread.detach();
 
-    //readData(H1, "/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
+    std::thread model_1_thread(&ModelMatrix::load, &ModelH1);  
+    std::thread model_2_thread(&ModelMatrix::load, &ModelH2);
+
     //std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
     //readData(H2, "/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
     //std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
@@ -340,7 +341,7 @@ int main() {
         }
 
         std::cout << "New client connected: " << new_socket  << " | " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
-        std::thread client_thread(handleClient, new_socket, std::ref(address), std::ref(H1), std::ref(H2));
+        std::thread client_thread(handleClient, new_socket, std::ref(address));
         client_thread.detach();
     }
 
