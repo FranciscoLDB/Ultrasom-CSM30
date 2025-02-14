@@ -71,11 +71,9 @@ int menu(int modelo) {
     std::cout << "\033[2J\033[1;1H";
     std::cout << "==============MENU==============\n";
     std::cout << "=| 1. Enviar sinal            |=\n";
-    std::cout << "=| 2. Escolher modelo [" << modelo << "]     |=\n"; 
-    std::cout << "=| 3. Relatório de imagens    |=\n"; 
-    std::cout << "=| 4. Relatório de desempenho |=\n"; 
-    std::cout << "=| 5. Verifica status         |=\n"; 
-    std::cout << "=| 6. Sair                    |=\n";
+    std::cout << "=| 2. Relatório de imagens    |=\n"; 
+    std::cout << "=| 3. Relatório de desempenho |=\n";
+    std::cout << "=| 4. Sair                    |=\n";
     std::cout << "================================\n";
     std::cout << "Escolha uma opção: ";
     int opcao;
@@ -115,22 +113,18 @@ void geraMensagem(Mensagem& mensagem) {
     mensagem.usuario = usuarios[dis(gen)] + std::to_string(numDis(gen));
 }
 
-double geraSinal(int modelo){
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> disModel1(-0.000009, 0.000001);
-    std::uniform_real_distribution<double> disModel2(-0.000009, 0.000001);
-
-    if (modelo == 1) {
-        return disModel1(gen);
-    } else {
-        return disModel2(gen);
-    }
-}
-
 double geraSinalCsv(int modelo, int i, std::vector<double>& g) {
-    if (g.size () == 0) {
-        std::string filePath = (modelo == 1) ? "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv" : "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv";
+    std::vector<std::string> paths1 = {
+        "/workspaces/Ultrasom-CSM30/data/model1/G-1.csv"
+        "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv",
+    };
+    std::vector<std::string> paths2 = {
+        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-1.csv",
+        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv",
+    };
+    int randomIndex = rand() % 2;
+    std::string filePath = modelo == 1 ? paths1[randomIndex] : paths2[randomIndex];
+    if (g.size () == 0) {    
         std::ifstream file(filePath);
         std::string line;
         if (file.is_open()) {
@@ -166,18 +160,16 @@ bool isValidNumber(const std::string& str) {
     return iss >> d && iss.eof();
 }
 
-// Enviar uma sequência de sinais em intervalos de tempo aleatórios
-void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
+void enviaSequencia(int sock, const Mensagem& mensagem, char* buffer) {
     int n1 = 50816, n2 = 27904, n = 0;
     n = mensagem.modelo == 1 ? n1 : n2;
     std::string header = "SINAL:" + std::to_string(mensagem.modelo) + ":" + mensagem.usuario + ":" + std::to_string(n);
     send(sock, header.c_str(), header.size(), 0);
     std::cout << "Enviando arquivo: " << header << std::endl;
-    
+
     std::vector<double> g;
     g.clear();
     for (int i = 0; i < n; i++) {
-        // double signal = geraSinal(mensagem.modelo);
         double signal = geraSinalCsv(mensagem.modelo, i, g);
         int interval = rand() % 2 + 0; // Intervalo aleatório entre 0ms e 100ms
         //std::this_thread::sleep_for(std::chrono::milliseconds(interval));
@@ -213,6 +205,14 @@ void enviaSinais(int sock, const Mensagem& mensagem, char* buffer) {
     send(sock, "END", BUFFER_SIZE, 0);
     std::cout << "Sinal de termino enviado\n";
 
+}
+
+// Enviar uma sequência de sinais em intervalos de tempo aleatórios
+void enviaSinais(int sock, const Mensagem& mensagem, char* buffer, int quant_seq = 1) {
+    for (int i = 0; i < quant_seq; i++) {
+        std::cout << "Enviando sequência " << i + 1 << " de " << quant_seq << std::endl;
+        enviaSequencia(sock, mensagem, buffer);
+    }
     memset(buffer, 0, BUFFER_SIZE);
     read(sock, buffer, BUFFER_SIZE);
     std::cout << "Response received:" << buffer << std::endl;
@@ -243,7 +243,7 @@ int main() {
     mensagem.modelo = 0;
     opcao = menu(mensagem.modelo);
     std::string resposta;
-    while (opcao != 6) {
+    while (opcao != 4) {
         switch (opcao) {
             case 1: {
                 geraMensagem(mensagem);
@@ -259,19 +259,6 @@ int main() {
                 break;
             }
             case 2: {
-                std::string modelo;
-                std::cout << "Escolha o modelo (0 para aleatório): ";
-                std::cin >> modelo;
-                if (modelo != "1" && modelo != "2" && modelo != "0") {
-                    std::cout << "Modelo inválido\n";
-                    std::cout << "Aperte enter para continuar!\n";
-                    std::cin.ignore();
-                    break;
-                }
-                mensagem.modelo = std::stoi(modelo);
-                break;
-            }
-            case 3: {
                 std::string sinal = "MSG:RELATORIO";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta != "ERRO") {
@@ -284,7 +271,7 @@ int main() {
                 std::cin.ignore();
                 break;
             }
-            case 4: {
+            case 3: {
                 std::string sinal = "MSG:DESEMPENHO";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta != "ERRO") {
@@ -309,14 +296,6 @@ int main() {
                 } else {
                     std::cout << "Erro ao obter relatório de desempenho\n";
                 }
-                std::cout << "Pressione enter para continuar\n";
-                std::cin.ignore();
-                std::cin.ignore();
-                break;
-            }
-            case 5: {
-                std::string sinal = "MSG:STATUS";
-                resposta = enviarSinal(sock, sinal, buffer);
                 std::cout << "Pressione enter para continuar\n";
                 std::cin.ignore();
                 std::cin.ignore();

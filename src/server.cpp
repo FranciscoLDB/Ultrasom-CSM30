@@ -322,10 +322,6 @@ int main() {
     std::thread model_1_thread(&ModelMatrix::load, &ModelH1);  
     std::thread model_2_thread(&ModelMatrix::load, &ModelH2);
 
-    //std::cout << "Matriz H1: " << H1.size() << " x " << H1[0].size() << std::endl;
-    //readData(H2, "/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
-    //std::cout << "Matriz H2: " << H2.size() << " x " << H2[0].size() << std::endl;
-
     if (!startServer(server_fd, address, opt)) {
         std::cout << "Erro ao iniciar o servidor\n";
         return 1;
