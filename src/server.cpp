@@ -148,82 +148,113 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
     std::cout << "Response sent: " << response << std::endl;
 
     char buffer[BUFFER_SIZE] = {0};
+    memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
-    std::string header(buffer);
+    int quant_seq = std::stoi(std::string(buffer).substr(6));
+    std::cout << "quant:" << quant_seq << std::endl;
 
-    // Parse header
-    std::string token;
-    std::istringstream iss(header);
-    std::getline(iss, token, ':'); // SINAL
-    std::getline(iss, token, ':'); // modelo
-    int modelo = std::stoi(token);
-    std::getline(iss, token, ':'); // usuario
-    std::string filePath = token;
-    std::getline(iss, token, ':'); // n
-    int n = std::stoi(token);
+    for (int j = 0; j < quant_seq; j++) {
+        memset(buffer, 0, BUFFER_SIZE);
+        read(new_socket, buffer, BUFFER_SIZE);
+        std::string header(buffer);
+        std::cout << "Header: " << header << std::endl;
+        // Parse header
+        std::string token;
+        std::istringstream iss(header);
+        std::getline(iss, token, ':'); // SINAL
+        std::getline(iss, token, ':'); // modelo
+        int modelo = std::stoi(token);
+        std::getline(iss, token, ':'); // usuario
+        std::string filePath = token;
+        std::getline(iss, token, ':'); // n
+        int n = std::stoi(token);
+    
+        // vetor para armazenar o indice dos sinais que deram erro
+        std::vector<int> erros;
+        erros.clear();
+        sinal.clear();
+        std::cout << "Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
+        int n1 = 50816, n2 = 27904, nn = 0;
+        nn = modelo == 1 ? n1 : n2;
+        for (int i = 0; i < nn; i++) {
+            double num;
+            do {
+                memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
+                read(new_socket, buffer, BUFFER_SIZE);
+                //std::cout << buffer << std::endl;
+            } while (std::string(buffer).empty());
+            std::string str(buffer);
 
-    // vetor para armazenar o indice dos sinais que deram erro
-    std::vector<int> erros;
-    erros.clear();
-    sinal.clear();
-    std::cout << "Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
-    for (int i = 0; i < n; i++) {
-        double num;
-        do {
-            memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
-            read(new_socket, buffer, BUFFER_SIZE);
-        } while (std::string(buffer).empty());
-        std::string str(buffer);
-        if (isValidNumber(str)) {
-            num = std::stod(str);
-            sinal.push_back(num);
-        } else {
-            //std::cerr << "Erro: valor inválido recebido: " << str << " | i: " << i << std::endl;
-            erros.push_back(i);
-            //sinal.push_back(0.0);
-        }
-
-        // Barra de progresso
-        int progress = (i * 100 / n);
-        if (i % (n / 100) == 0) {
-            if (progress % 25 == 0) {
-                std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | " << progress << "% concluído" << std::endl;
+            //std::cout << "i: " << i << " | valor: " << str << std::endl;
+            if (isValidNumber(str)) {
+                num = std::stod(str);
+                sinal.push_back(num);
+            } else {
+                //std::cerr << "Erro: valor inválido recebido: " << str << " | i: " << i << std::endl;
+                erros.push_back(i);
+                //sinal.push_back(0.0);
+            }
+    
+            // Barra de progresso
+            int progress = (i * 100 / n);
+            if (i % (n / 100) == 0) {
+                if (progress % 25 == 0) {
+                    std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | " << progress << "% concluído" << std::endl;
+                }
             }
         }
-    }
-    std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
-    std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
+        std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
+        std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
+    
+        memset(buffer, 0, BUFFER_SIZE);
+        read(new_socket, buffer, BUFFER_SIZE);
+        //std::cout << "Response received:" << buffer << std::endl;
+        if (std::string(buffer) != "END") {
+            std::cerr << "Erro ao receber sinal de END!\n";
+            send(new_socket, "ERRO", 4, 0);
+            return;
+        }
+        imagem img;
+        if (modelo == 1) {
+            ModelH1.load();
+            ModelH1.addProcess();
+            img = execute_cgnr(ModelH1.getMatrix(), sinal, modelo);
+            ModelH1.removeProcess();
+            ModelH1.clear();
+        } else if (modelo == 2) {
+            ModelH2.load();
+            ModelH2.addProcess();
+            img = execute_cgnr(ModelH2.getMatrix(), sinal, modelo);
+            ModelH2.removeProcess();
+            ModelH2.clear();
+        } else {
+            std::cerr << "Erro: modelo inválido\n";
+        }
+        img.usuario = filePath;
+        //std::cout << "Imagem reconstruída: " << img.path << std::endl;
+        std::cout << "==================================================================" << std::endl;
+        std::cout << "=| Usuario:    " << img.usuario << std::endl;
+        std::cout << "=| Img gerada: " << img.path << std::endl;
+        std::cout << "=| Algoritmo:  " << img.algoritmo << std::endl;
+        std::cout << "=| DataInicio: " << img.dataInicio << std::endl;
+        std::cout << "=| DataFim:    " << img.dataFim << std::endl;
+        std::cout << "=| Tamanho:    " << sqrt(img.tamanho) << "x" << sqrt(img.tamanho) << std::endl;
+        std::cout << "=| NumIteracoes: " << img.numIteracoes << std::endl;
+        std::cout << "===================================================================" << std::endl;
+    
+        saveToFile(img);
+    }    
 
+    memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
     //std::cout << "Response received:" << buffer << std::endl;
-    if (std::string(buffer) != "END") {
-        std::cerr << "Erro ao receber sinal de termino!\n";
+    if (std::string(buffer) != "FINISH") {
+        std::cerr << "Erro ao receber sinal de FINISH!\n";
         send(new_socket, "ERRO", 4, 0);
         return;
-    }
+    }    
+
     send(new_socket, "OK", 2, 0);
-
-    imagem img;
-    if (modelo == 1) {
-        img = execute_cgnr(ModelH1.getMatrix(), sinal, modelo);
-    } else if (modelo == 2) {
-        img = execute_cgnr(ModelH2.getMatrix(), sinal, modelo);
-    } else {
-        std::cerr << "Erro: modelo inválido\n";
-    }
-    img.usuario = filePath;
-    //std::cout << "Imagem reconstruída: " << img.path << std::endl;
-    std::cout << "==================================================================" << std::endl;
-    std::cout << "=| Usuario:    " << img.usuario << std::endl;
-    std::cout << "=| Img gerada: " << img.path << std::endl;
-    std::cout << "=| Algoritmo:  " << img.algoritmo << std::endl;
-    std::cout << "=| DataInicio: " << img.dataInicio << std::endl;
-    std::cout << "=| DataFim:    " << img.dataFim << std::endl;
-    std::cout << "=| Tamanho:    " << sqrt(img.tamanho) << "x" << sqrt(img.tamanho) << std::endl;
-    std::cout << "=| NumIteracoes: " << img.numIteracoes << std::endl;
-    std::cout << "===================================================================" << std::endl;
-
-    saveToFile(img);
 }
 
 // Função para lidar com um cliente
@@ -235,6 +266,7 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
     std::vector<double> sinal_vet;
     while (true) {
         // Recebe dados do cliente
+        memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
         int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
         if (bytesRead <= 0) {
             if (bytesRead == 0) {
@@ -269,6 +301,8 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
         } else {
             response = "ERRO";
             std::cerr << "Codigo inválido:" << codigo << std::endl;
+            close(new_socket);
+            return;
         }
     }
 
@@ -316,11 +350,8 @@ int main() {
     std::cout << "Iniciando servidor...\n";
 
     // Inicia a thread para monitorar o desempenho do servidor
-    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 600);
+    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 2200);
     performance_thread.detach();
-
-    std::thread model_1_thread(&ModelMatrix::load, &ModelH1);  
-    std::thread model_2_thread(&ModelMatrix::load, &ModelH2);
 
     if (!startServer(server_fd, address, opt)) {
         std::cout << "Erro ao iniciar o servidor\n";

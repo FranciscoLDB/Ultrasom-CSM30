@@ -6,6 +6,10 @@
 
 class ModelMatrix {
 public:
+    bool isLoaded = false;
+    bool isLoading = false;
+    bool isClearing = false;
+
     ModelMatrix(const std::string& filePath) {
         this->filePath = filePath;
         process.clear();
@@ -60,9 +64,6 @@ private:
     std::vector<std::vector<double>> matrix;
     std::vector<int> process;
     std::string filePath;
-    bool isLoaded = false;
-    bool isLoading = false;
-    bool isClearing = false;
 
     void loadMatrix(const std::string& filePath) {
         std::ifstream file(filePath);
