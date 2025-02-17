@@ -88,12 +88,12 @@ void getRelatorio(int new_socket) {
 Gerar um relatório de desempenho do servidor, com as informações de 
 consumo de memória e de ocupação de CPU num determinado intervalo de tempo; */
 void getDesempenho(int new_socket) {
+    send(new_socket, "OK", BUFFER_SIZE, 0);
     std::cout << "socket: " << new_socket << " | Enviando desempenho...\n";
 
     std::ifstream file("server_files/server_performance_report.csv");
     std::string line;
     std::string response = "";
-    send(new_socket, "DESEMPENHO", 10, 0);
     while (std::getline(file, line)) {
         response += line + "\n";
         if (response.size() >= BUFFER_SIZE) {
@@ -102,9 +102,9 @@ void getDesempenho(int new_socket) {
         }
     }
     if (!response.empty()) {
-        send(new_socket, response.c_str(), response.size(), 0);
+        send(new_socket, response.c_str(), BUFFER_SIZE, 0);
     }
-    send(new_socket, "END", 3, 0);
+    send(new_socket, "END", BUFFER_SIZE, 0);
 
     std::cout << "Socket: " << new_socket << " | Desempenho enviado!\n";
 }
@@ -353,7 +353,7 @@ int main() {
     std::cout << "Iniciando servidor...\n";
 
     // Inicia a thread para monitorar o desempenho do servidor
-    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 2200);
+    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 1, 2200);
     performance_thread.detach();
 
     if (!startServer(server_fd, address, opt)) {

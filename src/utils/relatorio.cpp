@@ -92,7 +92,20 @@ void geraRelatorio(int socket) {
     std::cout << "Relatório gerado com sucesso: relatorio_imagens.txt\n";
 }
 
-void geraDesempenho(const std::string& data) {
+void geraDesempenho(int socket) {
+    std::cout << "Recebendo relatório de desempenho...\n";
+    char buffer[BUFFER_SIZE] = {0};
+    std::string data;
+    while (true) {
+        memset(buffer, 0, BUFFER_SIZE);
+        read(socket, buffer, BUFFER_SIZE);
+        if (std::string(buffer).find("END") != std::string::npos) {
+            std::cout << "Sinal de END recebido\n";
+            break;
+        }
+        data += buffer;
+    }
+
     std::cout << "Gerando relatório de desempenho...\n";
     
     std::ofstream relatorio("client_files/relatorio_desempenho.txt");

@@ -269,7 +269,7 @@ int main() {
                 std::string sinal = "MSG:DESEMPENHO";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta != "ERRO") {
-                    geraDesempenho(resposta);
+                    geraDesempenho(sock);
                 } else {
                     std::cout << "Erro ao obter relatório de desempenho\n";
                 }
