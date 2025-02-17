@@ -86,34 +86,6 @@ int menu() {
     return opcao;
 }
 
-double geraSinalCsv(int modelo, int i, std::vector<double>& g) {
-    std::vector<std::string> paths1 = {
-        "/workspaces/Ultrasom-CSM30/data/model1/G-1.csv",
-        "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv",
-    };
-    std::vector<std::string> paths2 = {
-        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-1.csv",
-        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv",
-    };
-    std::srand(std::time(nullptr)); // Seta uma seed aleatória
-    int randomIndex = rand() % 2;
-    std::string filePath = modelo == 1 ? paths1[randomIndex] : paths2[randomIndex];
-    if (g.size () == 0) {    
-        std::ifstream file(filePath);
-        std::string line;
-        if (file.is_open()) {
-            while (std::getline(file, line)) {
-                std::istringstream iss(line);
-                double num;
-                if (iss >> num) {
-                    g.push_back(num);
-                }
-            }
-        }
-    }
-    return g[i];
-}
-
 // Print barra de progresso
 void printBarraProgresso(int progress) {
     int barWidth = 50;
@@ -147,36 +119,71 @@ void enviaSequencia(int sock, char* buffer) {
     std::uniform_int_distribution<> numDis(1000, 9999); // Distribuição para o número aleatório
     std::string usuario = usuarios[dis(gen)] + std::to_string(numDis(gen));
 
+    std::vector<std::string> paths1 = {
+        "/workspaces/Ultrasom-CSM30/data/model1/G-1.csv",
+        "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv",
+    };
+    std::vector<std::string> paths2 = {
+        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-1.csv",
+        "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv",
+    };
+    int randomIndex = rand() % 2;
+    std::string filePath = modelo == 1 ? paths1[randomIndex] : paths2[randomIndex];
+
     int n1 = 50816, n2 = 27904, n = 0;
     n = modelo == 1 ? n1 : n2;
     std::string header = "SINAL:" + std::to_string(modelo) + ":" + usuario + ":" + std::to_string(n);
-    send(sock, header.c_str(), header.size(), 0);
+    send(sock, header.c_str(), BUFFER_SIZE, 0);
     std::cout << "Enviando arquivo: " << header << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     std::vector<double> g;
     g.clear();
-    for (int i = 0; i < n; i++) {
-        double signal = geraSinalCsv(modelo, i, g);
-        std::ostringstream oss;
-        oss << signal;
-        std::string sinal = oss.str();
-
-        if (!isValidNumber(sinal)) {
-            std::cerr << "Sinal inválido: " << sinal << std::endl;
-            std::cout << "Aperte enter para continuar!\n";
-            std::cin.ignore();
-            send(sock, "ERRO", 4, 0);
-            return;
+    if (g.size () == 0) {    
+        std::ifstream file(filePath);
+        std::string line;
+        if (file.is_open()) {
+            while (std::getline(file, line)) {
+                std::istringstream iss(line);
+                double num;
+                if (iss >> num) {
+                    g.push_back(num);
+                }
+            }
         }
-        // if (i >= n - 20){
-        //     std::cout << "Sinal " << i << ": " << sinal.c_str() << std::endl;
-        // }
-        send(sock, sinal.c_str(), BUFFER_SIZE, 0);
+    }
+    
+    std::string msg = "";
+    std::string aux = "";
+    std::ostringstream oss;
+    int msgCont = 0;
+    for (int i = 0; i < n; i++) {
+        // Envia o maximo de sinais por vez
+        //std::cout << "Enviando sinal " << i + 1 << " de " << n << std::endl;
+        //std::cout << "Sinal: " << g[i] << std::endl;
+        oss.str(""); // Limpa o conteúdo do ostringstream
+        oss << g[i];
+        //std::cout << "sinal string: " << oss.str() + ";" << std::endl;
+        aux = oss.str() + ";";
+        if (msg.size() + aux.size() >= BUFFER_SIZE) {
+            //std::cout << "Enviando: " << msg << std::endl;
+            send(sock, msg.c_str(), BUFFER_SIZE, 0);
+            msgCont++;
+            msg = "";
+
+            // if (msgCont == 10){
+            //     break;
+            // }
+        }
+        msg += aux;
 
         int progress = (i * 100 / n);
         if (i % (n / 50) == 0) {
             printBarraProgresso(progress);
         }
+    }
+    if (!msg.empty()) {
+        send(sock, msg.c_str(), BUFFER_SIZE, 0);
+        std::cout << "last msg: " << msg << std::endl;
     }
     std::cout << "[==================================================] 100 %\n";
     std::cout << std::endl; // Nova linha após a barra de progresso

@@ -168,52 +168,47 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
         std::string filePath = token;
         std::getline(iss, token, ':'); // n
         int n = std::stoi(token);
-    
+
         // vetor para armazenar o indice dos sinais que deram erro
         std::vector<int> erros;
         erros.clear();
         sinal.clear();
         std::cout << "Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
-        int n1 = 50816, n2 = 27904, nn = 0;
-        nn = modelo == 1 ? n1 : n2;
-        for (int i = 0; i < nn; i++) {
-            double num;
-            do {
-                memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
-                read(new_socket, buffer, BUFFER_SIZE);
-                //std::cout << buffer << std::endl;
-            } while (std::string(buffer).empty());
-            std::string str(buffer);
 
-            //std::cout << "i: " << i << " | valor: " << str << std::endl;
-            if (isValidNumber(str)) {
-                num = std::stod(str);
-                sinal.push_back(num);
-            } else {
-                //std::cerr << "Erro: valor inválido recebido: " << str << " | i: " << i << std::endl;
-                erros.push_back(i);
-                //sinal.push_back(0.0);
+        bool end = false;
+        int msgCont = 0;
+        while (true) {
+            msgCont++;
+            memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
+            read(new_socket, buffer, BUFFER_SIZE);
+            if (std::string(buffer).find("END") != std::string::npos) {
+                std::cout << "===================Sinal de END recebido===================\n";
+                std::cout << "END: " << buffer << std::endl;
+                break;
             }
-    
-            // Barra de progresso
-            int progress = (i * 100 / n);
-            if (i % (n / 100) == 0) {
-                if (progress % 25 == 0) {
-                    std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | " << progress << "% concluído" << std::endl;
+            // buffer = 0.123123/n0.1123/n
+            std::string str(buffer);
+            std::istringstream iss(str);
+            std::string token;
+            //std::cout << "----------------------------------------------------------------\n";
+            //std::cout << "Buffer: " << buffer << std::endl;
+            while (std::getline(iss, token, ';')) {
+                if (isValidNumber(token)) {
+                    sinal.push_back(std::stod(token));
+                } else {
+                    std::cerr << "Erro: valor inválido recebido: " << token << std::endl;
+                    erros.push_back(sinal.size());
                 }
             }
+
+            // if (msgCont == 10){
+            //     break;
+            // }
         }
+
         std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
         std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
-    
-        memset(buffer, 0, BUFFER_SIZE);
-        read(new_socket, buffer, BUFFER_SIZE);
-        //std::cout << "Response received:" << buffer << std::endl;
-        if (std::string(buffer) != "END") {
-            std::cerr << "Erro ao receber sinal de END!\n";
-            send(new_socket, "ERRO", 4, 0);
-            return;
-        }
+
         imagem img;
         if (modelo == 1) {
             ModelH1.load();
@@ -243,11 +238,11 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
         std::cout << "===================================================================" << std::endl;
     
         saveToFile(img);
-    }    
+    }
 
     memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
-    //std::cout << "Response received:" << buffer << std::endl;
+    std::cout << "Response received:" << buffer << std::endl;
     if (std::string(buffer) != "FINISH") {
         std::cerr << "Erro ao receber sinal de FINISH!\n";
         send(new_socket, "ERRO", 4, 0);
