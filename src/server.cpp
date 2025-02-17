@@ -35,7 +35,7 @@ Gerar um relatório com todas as imagens reconstruídas com as seguintes informa
 imagem gerada, usuário, número de iterações e tempo de reconstrução; */
 void getRelatorio(int new_socket) {
     send(new_socket, "OK", BUFFER_SIZE, 0);
-    std::cout << "socket: " << new_socket << " | Enviando relatório...\n";
+    std::cout << "[SERVER] socket: " << new_socket << " | Enviando relatório...\n";
 
     std::ifstream file("server_files/images.csv");
     std::string line;
@@ -52,7 +52,7 @@ void getRelatorio(int new_socket) {
         send(new_socket, response.c_str(), BUFFER_SIZE, 0);
     }
     send(new_socket, "END", BUFFER_SIZE, 0);
-    std::cout << "Socket: " << new_socket << " | Relatório envidado!\n";
+    std::cout << "[SERVER] Socket: " << new_socket << " | Relatório envidado!\n";
 }
 
 /* Função para obter o desempenho
@@ -60,7 +60,7 @@ Gerar um relatório de desempenho do servidor, com as informações de
 consumo de memória e de ocupação de CPU num determinado intervalo de tempo; */
 void getDesempenho(int new_socket) {
     send(new_socket, "OK", BUFFER_SIZE, 0);
-    std::cout << "socket: " << new_socket << " | Enviando desempenho...\n";
+    std::cout << "[SERVER] socket: " << new_socket << " | Enviando desempenho...\n";
 
     std::ifstream file("server_files/server_performance_report.csv");
     std::string line;
@@ -77,7 +77,7 @@ void getDesempenho(int new_socket) {
     }
     send(new_socket, "END", BUFFER_SIZE, 0);
 
-    std::cout << "Socket: " << new_socket << " | Desempenho enviado!\n";
+    std::cout << "[SERVER] Socket: " << new_socket << " | Desempenho enviado!\n";
 }
 
 bool isValidNumber(const std::string& str) {
@@ -97,13 +97,11 @@ void getSinal(int new_socket, struct sockaddr_in& address) {
     memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
     int quant_seq = std::stoi(std::string(buffer).substr(6));
-    //std::cout << "quant:" << quant_seq << std::endl;
 
     for (int j = 0; j < quant_seq; j++) {
         memset(buffer, 0, BUFFER_SIZE);
         read(new_socket, buffer, BUFFER_SIZE);
         std::string header(buffer);
-        //std::cout << "Header: " << header << std::endl;
         // Parse header
         std::string token;
         std::istringstream iss(header);
@@ -119,7 +117,7 @@ void getSinal(int new_socket, struct sockaddr_in& address) {
         std::vector<int> erros;
         erros.clear();
         sinal.clear();
-        std::cout << "Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
+        std::cout << "[SERVER] Modelo: " << modelo << " | Usuario: " << filePath << " | n: " << n << std::endl;
 
         bool end = false;
         int msgCont = 0;
@@ -128,7 +126,6 @@ void getSinal(int new_socket, struct sockaddr_in& address) {
             memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
             read(new_socket, buffer, BUFFER_SIZE);
             if (std::string(buffer).find("END") != std::string::npos) {
-                //std::cout << "===================Sinal de END recebido===================\n";
                 break;
             }
             std::string str(buffer);
@@ -138,23 +135,22 @@ void getSinal(int new_socket, struct sockaddr_in& address) {
                 if (isValidNumber(token)) {
                     sinal.push_back(std::stod(token));
                 } else {
-                    std::cerr << "Erro: valor inválido recebido: " << token << std::endl;
+                    std::cerr << "[SERVER] Erro: valor inválido recebido: " << token << std::endl;
                     erros.push_back(sinal.size());
                 }
             }
         }
 
-        //std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
-        std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
+        std::cout << "[SERVER] Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
 
         controller.addProcess(SignalProcess(sinal, modelo, filePath));
     }
 
     memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
-    std::cout << "Response received:" << buffer << std::endl;
+    std::cout << "[SERVER] Response received:" << buffer << std::endl;
     if (std::string(buffer) != "FINISH") {
-        std::cerr << "Erro ao receber sinal de FINISH!\n";
+        std::cerr << "[SERVER] Erro ao receber sinal de FINISH!\n";
         send(new_socket, "ERRO", 4, 0);
         return;
     }    
@@ -174,16 +170,16 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
         int bytesRead = read(new_socket, buffer, BUFFER_SIZE);
         if (bytesRead <= 0) {
             if (bytesRead == 0) {
-                std::cout << "Cliente desconectado: " << new_socket << std::endl;
+                std::cout << "[SERVER] Cliente desconectado: " << new_socket << std::endl;
             } else {
-                std::cerr << "Erro ao ler dados do cliente\n";
+                std::cerr << "[SERVER] Erro ao ler dados do cliente\n";
             }
             break;
         }
 
         std::string signal(buffer, bytesRead);
         if (signal.size() < 4) {
-            std::cerr << "Erro: sinal recebido é muito curto\n";
+            std::cerr << "[SERVER] Erro: sinal recebido é muito curto\n";
             continue;
         }
         std::string codigo = signal.substr(4);
@@ -195,14 +191,14 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
         } else if (codigo == "SINAL") {
             getSinal(new_socket, address);
         } else if (codigo == "SAIR"){
-            std::cout << "Cliente desconectado: " << new_socket << std::endl;
+            std::cout << "[SERVER] Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
             send(new_socket, response.c_str(), response.size(), 0);
-            std::cout << "Response sent: " << response << std::endl;
+            std::cout << "[SERVER] Response sent: " << response << std::endl;
             break;
         } else {
             response = "ERRO";
-            std::cerr << "Codigo inválido:" << codigo << std::endl;
+            std::cerr << "[SERVER] Codigo inválido:" << codigo << std::endl;
             close(new_socket);
             return;
         }
@@ -249,19 +245,19 @@ int main() {
     int addrlen = sizeof(address);
 
     std::cout << "\033[2J\033[1;1H"; // limpa terminal
-    std::cout << "Iniciando servidor...\n";
+    std::cout << "[SERVER] Iniciando servidor...\n";
 
     // Inicia a thread para monitorar o desempenho do servidor
     std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 2200);
     performance_thread.detach();
 
     if (!startServer(server_fd, address, opt)) {
-        std::cout << "Erro ao iniciar o servidor\n";
+        std::cout << "[SERVER] Erro ao iniciar o servidor\n";
         return 1;
     }
-    std::cout << "Servidor iniciado\n";
+    std::cout << "[SERVER] Servidor iniciado\n";
 
-    std::cout << "Server listening on port " << PORT << std::endl;
+    std::cout << "[SERVER] Server listening on port " << PORT << std::endl;
     while (true) {
         // Aceita conexões de clientes
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
@@ -269,7 +265,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        std::cout << "New client connected: " << new_socket  << " | " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
+        std::cout << "[SERVER] New client connected: " << new_socket  << " | " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << std::endl;
         std::thread client_thread(handleClient, new_socket, std::ref(address));
         client_thread.detach();
     }

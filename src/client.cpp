@@ -120,14 +120,16 @@ void enviaSequencia(int sock, char* buffer) {
     std::string usuario = usuarios[dis(gen)] + std::to_string(numDis(gen));
 
     std::vector<std::string> paths1 = {
+        "/workspaces/Ultrasom-CSM30/data/model1/A-60x60-1.csv",
         "/workspaces/Ultrasom-CSM30/data/model1/G-1.csv",
         "/workspaces/Ultrasom-CSM30/data/model1/G-2.csv",
     };
     std::vector<std::string> paths2 = {
+        "/workspaces/Ultrasom-CSM30/data/model2/A-30x30-1.csv",
         "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-1.csv",
         "/workspaces/Ultrasom-CSM30/data/model2/g-30x30-2.csv",
     };
-    int randomIndex = rand() % 2;
+    int randomIndex = rand() % 3;
     std::string filePath = modelo == 1 ? paths1[randomIndex] : paths2[randomIndex];
 
     int n1 = 50816, n2 = 27904, n = 0;
@@ -167,16 +169,16 @@ void enviaSequencia(int sock, char* buffer) {
         }
         msg += aux;
 
-        int progress = (i * 100 / n);
-        if (i % (n / 50) == 0) {
-            printBarraProgresso(progress);
-        }
+        // int progress = (i * 100 / n);
+        // if (i % (n / 50) == 0) {
+        //     printBarraProgresso(progress);
+        // }
     }
     if (!msg.empty()) {
         send(sock, msg.c_str(), BUFFER_SIZE, 0);
     }
-    std::cout << "[==================================================] 100 %\n";
-    std::cout << std::endl;
+    //std::cout << "[==================================================] 100 %\n";
+    //std::cout << std::endl;
     std::cout << "Sinais enviados\n";
 
     send(sock, "END", BUFFER_SIZE, 0);

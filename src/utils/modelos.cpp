@@ -28,12 +28,19 @@ public:
     }
 
     void load() {
-        if (isLoaded || isLoading) {
-            std::cout << "Matriz já carregada ou carregando..." << std::endl;
+        if (isLoaded) {
+            std::cout << "[MATRIZ] Matriz já carregada... Modelo: " << this->filePath.substr(39) << std::endl;
             return;
         }
+        while (isLoading || isClearing) {
+            std::cout << "[MATRIZ] Aguarde a matriz ser carregada ou limpa... Modelo: " << this->filePath.substr(39) << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            if (isLoaded) {
+                return;
+            }
+        }
         isLoading = true;
-        std::cout << "Carregando matriz de " << filePath << std::endl;
+        std::cout << "[MATRIZ] Carregando matriz " << filePath.substr(39) << std::endl;
         loadMatrix(this->filePath);
         isLoaded = true;
         isLoading = false;
@@ -41,21 +48,21 @@ public:
 
     void clear() {
         if (isClearing) {
-            std::cout << "Matriz já está sendo limpa..." << std::endl;
+            std::cout << "[MATRIZ] Matriz já está sendo limpa..." << std::endl;
             return;
         } else if (!isLoaded) {
-            std::cout << "Matriz não carregada..." << std::endl;
+            std::cout << "[MATRIZ] Matriz não carregada..." << std::endl;
             return;
         } else if (isLoading) {
-            std::cout << "Matriz está sendo carregada..." << std::endl;
+            std::cout << "[MATRIZ] Matriz está sendo carregada..." << std::endl;
             return;
         }
         if (process.size() > 0) {
-            std::cout << "Matriz não pode ser limpa enquanto houver processos ativos..." << std::endl;
+            std::cout << "[MATRIZ] Matriz não pode ser limpa enquanto houver processos ativos..." << std::endl;
             return;
         }
         isClearing = true;
-        std::cout << "Limpando matriz de " << filePath << std::endl;
+        std::cout << "[MATRIZ] Limpando " << filePath.substr(39) << std::endl;
         matrix.clear();
         isClearing = false;
         isLoaded = false;
@@ -86,6 +93,6 @@ private:
             matrix.push_back(row);
         }
         file.close();
-        std::cout << "Matriz carregada com sucesso de " << filePath << std::endl;
+        std::cout << "[MATRIZ] Matriz carregada com sucesso de " << filePath.substr(39) << std::endl;
     }
 };

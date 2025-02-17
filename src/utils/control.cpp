@@ -52,6 +52,7 @@ class SignalProcessController {
         std::thread monitorThread;
         ModelMatrix ModelH1;
         ModelMatrix ModelH2;
+        int completedProcesses = 0;
 
         void monitorCPU() {
             while (!stop) {
@@ -68,7 +69,7 @@ class SignalProcessController {
                         cv.wait(lock);
                     }
                 } else {
-                    std::cout << "CPU usage high: " << cpuUsage << "%, waiting...\n";
+                    std::cout << "[CONTROL] CPU usage high: " << cpuUsage << "%, waiting...\n";
                 }
             }
         }
@@ -93,7 +94,7 @@ class SignalProcessController {
 
         void executeProcess(SignalProcess process) {
             // Placeholder for actual signal processing
-            std::cout << "Processing signal for user: " << process.user << " with model: " << process.model << std::endl;
+            std::cout << "[CONTROL] Processing: " << process.user << " with model: " << process.model << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(5)); // Simulate processing time
             imagem img;
             if (process.model == 1) {
@@ -112,6 +113,7 @@ class SignalProcessController {
                 std::cerr << "Erro: modelo inválido\n";
             }
             img.usuario = process.user;
+            completedProcesses++;
             //std::cout << "Imagem reconstruída: " << img.path << std::endl;
             // std::cout << "==================================================================" << std::endl;
             // std::cout << "=| Usuario:    " << img.usuario << std::endl;
@@ -124,13 +126,14 @@ class SignalProcessController {
             // std::cout << "===================================================================" << std::endl;
 
             saveToFile(img);
-            std::cout << "Finished processing signal for user: " << process.user << std::endl;
+            std::cout << "[CONTROL] Finished processing: " << process.user << std::endl;
+            std::cout << "[CONTROL] Completed processes: " << completedProcesses << std::endl;
         }
 
         void saveToFile(const imagem img) {
             std::ofstream file("./server_files/images.csv", std::ofstream::app);
             if (!file.is_open()) {
-                std::cerr << "Erro ao criar o arquivo\n";
+                std::cerr << "[CONTROL] Erro ao criar o arquivo\n";
                 return;
             }
             // Formato: usuario,algoritmo,dataInicio,dataFim,tamanho,numIteracoes,path,tempo
