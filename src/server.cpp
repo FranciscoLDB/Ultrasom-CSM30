@@ -1,32 +1,22 @@
 #include <cstring>
-#include <thread>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <arpa/inet.h> 
 #include <map>
-#include "cgnr.cpp"
 #include "utils/desempenho.cpp"
-#include "utils/modelos.cpp"
+#include "utils/control.cpp"
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
-/* Verifica recursos da maquina
-- Consumo de memória;
-- Ocupação de CPU;
-*/
-struct desempenho {
-    double memoria;
-    double cpu;
-};
-
 // Função para obter o uso de memória em mb
 // Retorna o uso de memória em mb
-long getMemoryUsage() {
+double getMemoryUsage() {
     std::ifstream file("/proc/self/status");
     std::string line;
+    long totalMemory = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024;
     while (std::getline(file, line)) {
         if (line.substr(0, 6) == "VmRSS:") {
             std::istringstream iss(line);
@@ -34,29 +24,10 @@ long getMemoryUsage() {
             long value;
             std::string unit;
             iss >> key >> value >> unit;
-            return value/1000; // Retorna o valor em mb
+            return (value / totalMemory) * 100.0; // Retorna o valor em %
         }
     }
     return 0;
-}
-
-// Função para obter o uso de CPU em porcentagem
-double getCpuUsage() {
-    std::ifstream file("/proc/stat");
-    std::string line;
-    std::getline(file, line);
-    std::istringstream iss(line);
-    std::string cpu;
-    long user, nice, system, idle;
-    iss >> cpu >> user >> nice >> system >> idle;
-    static long prevTotal = 0;
-    static long prevIdle = 0;
-    long total = user + nice + system + idle;
-    long totalDiff = total - prevTotal;
-    long idleDiff = idle - prevIdle;
-    prevTotal = total;
-    prevIdle = idle;
-    return (totalDiff - idleDiff) * 100.0 / totalDiff;
 }
 
 /* Função para obter o relatório
@@ -109,63 +80,30 @@ void getDesempenho(int new_socket) {
     std::cout << "Socket: " << new_socket << " | Desempenho enviado!\n";
 }
 
-void getStatus(int new_socket) {
-    std::string response = "STATUS";
-    send(new_socket, response.c_str(), response.size(), 0);
-    std::cout << "Response sent: " << response << std::endl;
-}
-
 bool isValidNumber(const std::string& str) {
     std::istringstream iss(str);
     double d;
     return iss >> d && iss.eof();
 }
 
-void salvarSinal(const std::vector<double>& sinal, const std::string& filePath) {
-    std::ofstream file("server_files/" + filePath, std::ofstream::trunc);
-    if (!file.is_open()) {
-        std::cerr << "Erro ao criar o arquivo\n";
-        return;
-    }
-
-    for (const auto& valor : sinal) {
-        file << valor << "\n";
-    }
-    file.close();
-    std::cout << "Arquivo salvo\n";
-}
-
-void saveToFile(const imagem img) {
-    std::ofstream file("./server_files/images.csv", std::ofstream::app);
-    if (!file.is_open()) {
-        std::cerr << "Erro ao criar o arquivo\n";
-        return;
-    }
-    // Formato: usuario,algoritmo,dataInicio,dataFim,tamanho,numIteracoes,path,tempo
-    file << img.usuario << "," << img.algoritmo << "," << img.dataInicio << "," << img.dataFim << ",";
-    file << img.tamanho << "," << img.numIteracoes << "," << img.path << "," << img.tempo <<"\n";
-    file.close();
-}
-
-extern ModelMatrix ModelH1;
-extern ModelMatrix ModelH2;
-
-void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& address) {
+extern SignalProcessController controller;
+void getSinal(int new_socket, struct sockaddr_in& address) {
     std::string response = "OK";
     send(new_socket, response.c_str(), response.size(), 0);
-    std::cout << "Response sent: " << response << std::endl;
+    //std::cout << "Response sent: " << response << std::endl;
+    std::vector<double> sinal;
 
     char buffer[BUFFER_SIZE] = {0};
     memset(buffer, 0, BUFFER_SIZE);
     read(new_socket, buffer, BUFFER_SIZE);
     int quant_seq = std::stoi(std::string(buffer).substr(6));
-    std::cout << "quant:" << quant_seq << std::endl;
+    //std::cout << "quant:" << quant_seq << std::endl;
 
     for (int j = 0; j < quant_seq; j++) {
         memset(buffer, 0, BUFFER_SIZE);
         read(new_socket, buffer, BUFFER_SIZE);
         std::string header(buffer);
-        std::cout << "Header: " << header << std::endl;
+        //std::cout << "Header: " << header << std::endl;
         // Parse header
         std::string token;
         std::istringstream iss(header);
@@ -190,16 +128,12 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
             memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
             read(new_socket, buffer, BUFFER_SIZE);
             if (std::string(buffer).find("END") != std::string::npos) {
-                std::cout << "===================Sinal de END recebido===================\n";
-                std::cout << "END: " << buffer << std::endl;
+                //std::cout << "===================Sinal de END recebido===================\n";
                 break;
             }
-            // buffer = 0.123123/n0.1123/n
             std::string str(buffer);
             std::istringstream iss(str);
             std::string token;
-            //std::cout << "----------------------------------------------------------------\n";
-            //std::cout << "Buffer: " << buffer << std::endl;
             while (std::getline(iss, token, ';')) {
                 if (isValidNumber(token)) {
                     sinal.push_back(std::stod(token));
@@ -208,44 +142,12 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
                     erros.push_back(sinal.size());
                 }
             }
-
-            // if (msgCont == 10){
-            //     break;
-            // }
         }
 
-        std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
+        //std::cout << "Socket: " << new_socket << " | IP: " << inet_ntoa(address.sin_addr) << ":" << ntohs(address.sin_port) << " | 100% concluído" << std::endl;
         std::cout << "Sinal recebido com " << sinal.size() << " elementos | Erros: " << erros.size() << std::endl;
 
-        imagem img;
-        if (modelo == 1) {
-            ModelH1.load();
-            ModelH1.addProcess();
-            img = execute_cgnr(ModelH1.getMatrix(), sinal, modelo);
-            ModelH1.removeProcess();
-            ModelH1.clear();
-        } else if (modelo == 2) {
-            ModelH2.load();
-            ModelH2.addProcess();
-            img = execute_cgnr(ModelH2.getMatrix(), sinal, modelo);
-            ModelH2.removeProcess();
-            ModelH2.clear();
-        } else {
-            std::cerr << "Erro: modelo inválido\n";
-        }
-        img.usuario = filePath;
-        //std::cout << "Imagem reconstruída: " << img.path << std::endl;
-        std::cout << "==================================================================" << std::endl;
-        std::cout << "=| Usuario:    " << img.usuario << std::endl;
-        std::cout << "=| Img gerada: " << img.path << std::endl;
-        std::cout << "=| Algoritmo:  " << img.algoritmo << std::endl;
-        std::cout << "=| DataInicio: " << img.dataInicio << std::endl;
-        std::cout << "=| DataFim:    " << img.dataFim << std::endl;
-        std::cout << "=| Tamanho:    " << sqrt(img.tamanho) << "x" << sqrt(img.tamanho) << std::endl;
-        std::cout << "=| NumIteracoes: " << img.numIteracoes << std::endl;
-        std::cout << "===================================================================" << std::endl;
-    
-        saveToFile(img);
+        controller.addProcess(SignalProcess(sinal, modelo, filePath));
     }
 
     memset(buffer, 0, BUFFER_SIZE);
@@ -266,7 +168,6 @@ void getSinal(int new_socket, std::vector<double>& sinal, struct sockaddr_in& ad
 void handleClient(int new_socket, struct sockaddr_in& address) {
     char buffer[BUFFER_SIZE] = {0};
     std::string response;
-    std::vector<double> sinal_vet;
     while (true) {
         // Recebe dados do cliente
         memset(buffer, 0, BUFFER_SIZE); // limpa variavel buffer
@@ -291,10 +192,8 @@ void handleClient(int new_socket, struct sockaddr_in& address) {
             getRelatorio(new_socket);
         } else if (codigo == "DESEMPENHO") {
             getDesempenho(new_socket);
-        } else if (codigo == "STATUS") {
-            getStatus(new_socket);
         } else if (codigo == "SINAL") {
-            getSinal(new_socket, sinal_vet, address);
+            getSinal(new_socket, address);
         } else if (codigo == "SAIR"){
             std::cout << "Cliente desconectado: " << new_socket << std::endl;
             response = "Desconectado";
@@ -341,8 +240,8 @@ bool startServer(int& server_fd, struct sockaddr_in& address, int& opt) {
 }
 
 // g++ server.cpp -o server -pthread -lblas
-ModelMatrix ModelH1("/workspaces/Ultrasom-CSM30/data/model1/H-1.csv");
-ModelMatrix ModelH2("/workspaces/Ultrasom-CSM30/data/model2/H-2.csv");
+
+SignalProcessController controller;
 int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
@@ -353,7 +252,7 @@ int main() {
     std::cout << "Iniciando servidor...\n";
 
     // Inicia a thread para monitorar o desempenho do servidor
-    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 1, 2200);
+    std::thread performance_thread(logPerformance, "server_files/server_performance_report.csv", 5, 2200);
     performance_thread.detach();
 
     if (!startServer(server_fd, address, opt)) {

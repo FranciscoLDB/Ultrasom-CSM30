@@ -157,22 +157,13 @@ void enviaSequencia(int sock, char* buffer) {
     std::ostringstream oss;
     int msgCont = 0;
     for (int i = 0; i < n; i++) {
-        // Envia o maximo de sinais por vez
-        //std::cout << "Enviando sinal " << i + 1 << " de " << n << std::endl;
-        //std::cout << "Sinal: " << g[i] << std::endl;
         oss.str(""); // Limpa o conteúdo do ostringstream
         oss << g[i];
-        //std::cout << "sinal string: " << oss.str() + ";" << std::endl;
         aux = oss.str() + ";";
         if (msg.size() + aux.size() >= BUFFER_SIZE) {
-            //std::cout << "Enviando: " << msg << std::endl;
             send(sock, msg.c_str(), BUFFER_SIZE, 0);
             msgCont++;
             msg = "";
-
-            // if (msgCont == 10){
-            //     break;
-            // }
         }
         msg += aux;
 
@@ -183,10 +174,9 @@ void enviaSequencia(int sock, char* buffer) {
     }
     if (!msg.empty()) {
         send(sock, msg.c_str(), BUFFER_SIZE, 0);
-        std::cout << "last msg: " << msg << std::endl;
     }
     std::cout << "[==================================================] 100 %\n";
-    std::cout << std::endl; // Nova linha após a barra de progresso
+    std::cout << std::endl;
     std::cout << "Sinais enviados\n";
 
     send(sock, "END", BUFFER_SIZE, 0);
@@ -216,8 +206,6 @@ void enviaSinais(int sock, char* buffer, int quant_seq = 1) {
     std::cin.ignore();
     std::cin.ignore();
 }
-
-
 
 // g++ client.cpp -o client
 int main() { 

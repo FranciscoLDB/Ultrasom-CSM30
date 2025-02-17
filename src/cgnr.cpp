@@ -57,8 +57,8 @@ int cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double
     int maxIterations = 20;
     double tolerance = 1e-4;
     int iterations = 0;
-    cout << "Iniciando CGNR..." << endl;
-    cout << "Tamanho do vetor g: " << g.size() << endl;
+    //cout << "Iniciando CGNR..." << endl;
+    //cout << "Tamanho do vetor g: " << g.size() << endl;
 
     auto start = chrono::high_resolution_clock::now();
     int m = H.size();
@@ -93,7 +93,7 @@ int cgnr(const vector<vector<double>>& H, const vector<double>& g, vector<double
 
         double Nr = norm2(r);
         if (iterations % 10 == 0) {
-            cout << "Iteração " << iterations << ": norm2(r) = " << Nr << endl;
+            //cout << "Iteração " << iterations << ": norm2(r) = " << Nr << endl;
         }
         if (norm2(r) < tolerance) {
             break;
@@ -157,7 +157,7 @@ void saveImage(const vector<double>& f, const string& filename, imagem& img, int
     }
 
     img.tamanho = size;
-    std::cout << "A imagem foi salva como " << filename << std::endl;
+    //std::cout << "A imagem foi salva como " << filename << std::endl;
 }
 
 // Run cgnr and save the reconstructed image
@@ -193,7 +193,7 @@ imagem execute_cgnr(const vector<vector<double>>& H, const vector<double>& g, in
     img.dataFim = string(end_buffer);
 
     chrono::duration<double> elapsed = end - start;
-    cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
+    //cout << "Tempo de reconstrução: " << elapsed.count() << " segundos." << endl;
     img.tempo = elapsed.count();
 
     // Salvar a imagem reconstruída

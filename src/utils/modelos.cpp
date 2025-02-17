@@ -57,6 +57,7 @@ public:
         isClearing = true;
         std::cout << "Limpando matriz de " << filePath << std::endl;
         matrix.clear();
+        isClearing = false;
         isLoaded = false;
     } 
 
