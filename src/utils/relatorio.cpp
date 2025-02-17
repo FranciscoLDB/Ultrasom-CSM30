@@ -4,6 +4,8 @@
 #include <string>
 #include <fstream>
 
+#define BUFFER_SIZE 1024
+
 // Estrutura para armazenar as informações da imagem
 struct ImagemInfo {
     std::string usuario;
@@ -28,9 +30,20 @@ std::vector<std::string> split(const std::string& str, char delimiter) {
 }
 
 // Função para gerar o relatório
-void geraRelatorio(const std::string& data) {
+void geraRelatorio(int socket) {
+    std::cout << "Recebendo relatório...\n";
+    char buffer[BUFFER_SIZE] = {0};
+    std::string data;
+    while (true) {
+        memset(buffer, 0, BUFFER_SIZE);
+        read(socket, buffer, BUFFER_SIZE);
+        if (std::string(buffer).find("END") != std::string::npos) {
+            std::cout << "Sinal de END recebido\n";
+            break;
+        }
+        data += buffer;
+    }
     std::cout << "Gerando relatório...\n";
-    
     std::vector<ImagemInfo> imagens;
     std::istringstream dataStream(data);
     std::string line;
@@ -53,7 +66,7 @@ void geraRelatorio(const std::string& data) {
     }
 
     // Gerar o relatório
-    std::ofstream relatorio("relatorio_imagens.txt");
+    std::ofstream relatorio("client_files/relatorio_imagens.txt");
     if (!relatorio.is_open()) {
         std::cerr << "Erro ao criar o arquivo de relatório\n";
         return;
@@ -82,7 +95,7 @@ void geraRelatorio(const std::string& data) {
 void geraDesempenho(const std::string& data) {
     std::cout << "Gerando relatório de desempenho...\n";
     
-    std::ofstream relatorio("relatorio_desempenho.txt");
+    std::ofstream relatorio("client_files/relatorio_desempenho.txt");
     if (!relatorio.is_open()) {
         std::cerr << "Erro ao criar o arquivo de relatório de desempenho\n";
         return;

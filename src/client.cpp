@@ -256,7 +256,7 @@ int main() {
                 std::string sinal = "MSG:RELATORIO";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta != "ERRO") {
-                    geraRelatorio(resposta);
+                    geraRelatorio(sock);
                 } else {
                     std::cout << "Erro ao obter relatório\n";
                 }
@@ -269,24 +269,7 @@ int main() {
                 std::string sinal = "MSG:DESEMPENHO";
                 resposta = enviarSinal(sock, sinal, buffer);
                 if (resposta != "ERRO") {
-                    std::cout << "Copiando relatório de desempenho\n";
-                    std::ofstream desempenhoFile("desempenho.txt");
-                    if (desempenhoFile.is_open()) {
-                        while (true) {
-                            std::cout << "Recebendo dados...\n";
-                            memset(buffer, 0, BUFFER_SIZE);
-                            read(sock, buffer, BUFFER_SIZE);
-                            //std::cout << buffer;
-                            if (std::string(buffer).find("END") != std::string::npos) {
-                                break;
-                            }                            
-                            desempenhoFile << buffer;
-                        }
-                        desempenhoFile.close();
-                    } else {
-                        std::cout << "Erro ao abrir o arquivo de desempenho\n";
-                    }
-                    //geraDesempenho(resposta);
+                    geraDesempenho(resposta);
                 } else {
                     std::cout << "Erro ao obter relatório de desempenho\n";
                 }

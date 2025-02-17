@@ -63,16 +63,24 @@ double getCpuUsage() {
 Gerar um relatório com todas as imagens reconstruídas com as seguintes informações: 
 imagem gerada, usuário, número de iterações e tempo de reconstrução; */
 void getRelatorio(int new_socket) {
+    send(new_socket, "OK", BUFFER_SIZE, 0);
     std::cout << "socket: " << new_socket << " | Enviando relatório...\n";
 
     std::ifstream file("server_files/images.csv");
     std::string line;
     std::string response = "";
+    std::string aux = "";
     while (std::getline(file, line)) {
         response += line + "\n";
+        if (response.size() + aux.size() >= BUFFER_SIZE) {
+            send(new_socket, response.c_str(), BUFFER_SIZE, 0);
+            response = response.substr(BUFFER_SIZE);
+        }
     }
-    send(new_socket, response.c_str(), response.size(), 0);
-
+    if (!response.empty()) {
+        send(new_socket, response.c_str(), BUFFER_SIZE, 0);
+    }
+    send(new_socket, "END", BUFFER_SIZE, 0);
     std::cout << "Socket: " << new_socket << " | Relatório envidado!\n";
 }
 

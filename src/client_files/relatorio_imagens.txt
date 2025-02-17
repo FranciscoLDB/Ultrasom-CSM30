@@ -1,0 +1,263 @@
+Relatório de Imagens Reconstruídas
+===========================================================
+Usuário: Heidi2961
+Algoritmo: 2
+Data Início: 2025-02-14 19:21:35
+Data Fim: 2025-02-14 19:21:37
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250214_192137.png
+Tempo de Reconstrução: 1.37669 segundos
+-----------------------------------------------------------
+Usuário: Tina1727
+Algoritmo: 1
+Data Início: 2025-02-14 19:26:16
+Data Fim: 2025-02-14 19:26:33
+Tamanho: 3600 pixels
+Número de Iterações: 3
+Caminho da Imagem: ./server_files/imgs/20250214_192633.png
+Tempo de Reconstrução: 17.0136 segundos
+-----------------------------------------------------------
+Usuário: Laura1928
+Algoritmo: 2
+Data Início: 2025-02-17 09:59:00
+Data Fim: 2025-02-17 09:59:01
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_095901.png
+Tempo de Reconstrução: 1.71961 segundos
+-----------------------------------------------------------
+Usuário: Alice8291
+Algoritmo: 1
+Data Início: 2025-02-17 10:07:06
+Data Fim: 2025-02-17 10:07:23
+Tamanho: 3600 pixels
+Número de Iterações: 3
+Caminho da Imagem: ./server_files/imgs/20250217_100723.png
+Tempo de Reconstrução: 16.6808 segundos
+-----------------------------------------------------------
+Usuário: Michael1216
+Algoritmo: 2
+Data Início: 2025-02-17 10:19:39
+Data Fim: 2025-02-17 10:19:41
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_101941.png
+Tempo de Reconstrução: 1.64872 segundos
+-----------------------------------------------------------
+Usuário: Charlie3491
+Algoritmo: 2
+Data Início: 2025-02-17 10:49:46
+Data Fim: 2025-02-17 10:49:56
+Tamanho: 900 pixels
+Número de Iterações: 20
+Caminho da Imagem: ./server_files/imgs/20250217_104956.png
+Tempo de Reconstrução: 9.48866 segundos
+-----------------------------------------------------------
+Usuário: Rachel8114
+Algoritmo: 1
+Data Início: 2025-02-17 10:53:11
+Data Fim: 2025-02-17 10:54:21
+Tamanho: 3600 pixels
+Número de Iterações: 20
+Caminho da Imagem: ./server_files/imgs/20250217_105421.png
+Tempo de Reconstrução: 70.4203 segundos
+-----------------------------------------------------------
+Usuário: Eve6707
+Algoritmo: 2
+Data Início: 2025-02-17 11:16:17
+Data Fim: 2025-02-17 11:16:18
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_111618.png
+Tempo de Reconstrução: 1.41482 segundos
+-----------------------------------------------------------
+Usuário: Michael3700
+Algoritmo: 2
+Data Início: 2025-02-17 11:18:58
+Data Fim: 2025-02-17 11:18:59
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_111859.png
+Tempo de Reconstrução:  �ʜ�1.36333 segundos
+-----------------------------------------------------------
+Usuário: Pamela6068
+Algoritmo: 2
+Data Início: 2025-02-17 11:20:10
+Data Fim: 2025-02-17 11:20:11
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_112011.png
+Tempo de Reconstrução: 1.36396 segundos
+-----------------------------------------------------------
+Usuário: Alice6670
+Algoritmo: 2
+Data Início: 2025-02-17 11:21:41
+Data Fim: 2025-02-17 11:21:42
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_112142.png
+Tempo de Reconstrução: 1.34897 segundos
+-----------------------------------------------------------
+Usuário: Kevin9690
+Algoritmo: 1
+Data Início: 2025-02-17 11:22:52
+Data Fim: 2025-02-17 11:23:12
+Tamanho: 3600 pixels
+Número de Iterações: 4
+Caminho da Imagem: ./server_files/imgs/20250217_112312.png
+Tempo de Reconstrução: 19.9856 segundos
+-----------------------------------------------------------
+Usuário: Eve9082
+Algoritmo: 1
+Data Início: 2025-02-17 11:32:16
+Data Fim: 2025-02-17 11:32:36
+Tamanho: 3600 pixels
+Número de Iterações: 4
+Caminho da Imagem: ./server_files/imgs/20250217_113236.png
+Tempo de Reconstrução: 19.9529 segundos
+-----------------------------------------------------------
+Usuário: Bob1688
+Algoritmo: 1
+Data Início: 2025-02-17 11:33:16
+Data Fim: 2025-02-17 11:33:32
+Tamanho: 3600 pixels
+Número de Iterações: 3
+Caminho da Imagem: ./server_files/imgs/20250217_113332.png
+Tempo de Reconstrução: 16.8401 segundos
+-----------------------------------------------------------
+Usuário: Tina8863
+Algoritmo: 2
+Data Início: 2025-02-17 11:33:41
+Data Fim: 2025-02-17 11:33:42
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113342.png
+Tempo de Reconstrução: 1.34061 segundos
+-----------------------------------------------------------
+Usuário: Michael1980
+Algoritmo: 1
+Data Início: 2025-02-17 11:33:42
+Data Fim: 2025-02-17 11:34:02
+Tamanho: 3600 pixels
+Número de Iterações: 4
+Caminho da Imagem: ./server_files/imgs/20250217_113402.png
+Tempo de Reconstrução: 20.0583 segundos
+-----------------------------------------------------------
+Usuário: Charlie3715
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:00
+Data Fim: 2025-02-17 11:36:01
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113601.png
+Tempo de Reconstrução: 1.17089 segundos
+-----------------------------------------------------------
+Usuário: Eve6163
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:01
+Data Fim: 2025-02-17 11:36:02
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113602.png
+Tempo de Reconstrução: 1.39999 segundos
+-----------------------------------------------------------
+Usuário: Michael7518
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:03
+Data Fim: 2025-02-17 11:36:04
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem:  �ʜ�./server_files/imgs/20250217_113604.png
+Tempo de Reconstrução: 1.47778 segundos
+-----------------------------------------------------------
+Usuário: Oliver9180
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:03
+Data Fim: 2025-02-17 11:36:05
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113605.png
+Tempo de Reconstrução: 1.42955 segundos
+-----------------------------------------------------------
+Usuário: Pamela9927
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:05
+Data Fim: 2025-02-17 11:36:06
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113606.png
+Tempo de Reconstrução: 1.45509 segundos
+-----------------------------------------------------------
+Usuário: Heidi5122
+Algoritmo: 2
+Data Início: 2025-02-17 11:36:05
+Data Fim: 2025-02-17 11:36:07
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_113607.png
+Tempo de Reconstrução: 1.42709 segundos
+-----------------------------------------------------------
+Usuário: Rachel8114
+Algoritmo: 1
+Data Início: 2025-02-17 10:53:11
+Data Fim: 2025-02-17 10:54:21
+Tamanho: 3600 pixels
+Número de Iterações: 20
+Caminho da Imagem: ./server_files/imgs/20250217_105421.png
+Tempo de Reconstrução: 70.4203 segundos
+-----------------------------------------------------------
+Usuário: Eve6707
+Algoritmo: 2
+Data Início: 2025-02-17 11:16:17
+Data Fim: 2025-02-17 11:16:18
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_111618.png
+Tempo de Reconstrução: 1.41482 segundos
+-----------------------------------------------------------
+Usuário: Michael3700
+Algoritmo: 2
+Data Início: 2025-02-17 11:18:58
+Data Fim: 2025-02-17 11:18:59
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_111859.png
+Tempo de Reconstrução: 1.36333 segundos
+-----------------------------------------------------------
+Usuário: Pamela6068
+Algoritmo: 2
+Data Início: 2025-02-17 11:20:10
+Data Fim: 2025-02-17 11:20:11
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_112011.png
+Tempo de Reconstrução: 1.36396 segundos
+-----------------------------------------------------------
+Usuário: Alice6670
+Algoritmo: 2
+Data Início: 2025-02-17 11:21:41
+Data Fim: 2025-02-17 11:21:42
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_112142.png
+Tempo de Reconstrução: 1.34897 segundos
+-----------------------------------------------------------
+Usuário: Kevin9690
+Algoritmo: 1
+Data Início: 2025-02-17 11:22:52
+Data Fim: 2025-02-17 11:23:12
+Tamanho: 3600 pixels
+Número de Iterações: 4
+Caminho da Imagem: ./server_files/imgs/20250217_112312.png
+Tempo de Reconstrução: 19.9856 segundos
+-----------------------------------------------------------
+Usuário: Heidi9797
+Algoritmo: 2
+Data Início: 202 �ʜ�5-02-17 12:51:49
+Data Fim: 2025-02-17 12:51:50
+Tamanho: 900 pixels
+Número de Iterações: 1
+Caminho da Imagem: ./server_files/imgs/20250217_125150.png
+Tempo de Reconstrução: 1.33554 segundos
+-----------------------------------------------------------
